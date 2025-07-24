@@ -166,10 +166,10 @@
       jumping: false,
       crouching: false,
       jumpCooldown: 0,
-      frame: 0, // For run animation
+      frame: 0,
     };
 
-    const gravity = 0.6; // Reduced for smoother jump
+    const gravity = 0.5;
     let obstacles = [];
     let powerUps = [];
     let score = 0;
@@ -178,39 +178,43 @@
     let nickname = "";
     let hasShield = false;
     let lastFrameTime = performance.now();
-    let clouds = [
-      { x: canvas.width, y: 50, size: 30 },
-      { x: canvas.width + 400, y: 80, size: 40 },
+    let lastObstacleSpawn = 0;
+    let backgroundObjects = [
+      { x: canvas.width, y: 50, emoji: "🌙", size: 30 },
+      { x: canvas.width + 300, y: 80, emoji: "⭐", size: 20 },
+      { x: canvas.width + 600, y: 60, emoji: "⭐", size: 25 },
+      { x: canvas.width + 900, y: 70, emoji: "🌙", size: 35 },
     ];
 
     const obstacleTypes = [
-      { type: "cactus", emoji: "🌵", width: 40, height: 40, y: 200 },
-      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 150 },
+      { type: "cactus", emoji: "🌵", width: 40, height: 40, y: 180 }, // Raised
+      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 }, // Lowered
     ];
 
     const powerUpTypes = [
       { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 180 },
     ];
 
-    function spawnObstacle() {
-      if (obstacles.length < 3) { // Limit number of obstacles
+    function spawnObstacle(timestamp) {
+      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
         obstacles.push({
-          x: canvas.width + 100 + Math.random() * 200,
+          x: canvas.width + 100 + Math.random() * 300,
           y: type.y,
           width: type.width,
           height: type.height,
           type: type.type,
           emoji: type.emoji,
         });
+        lastObstacleSpawn = timestamp;
       }
     }
 
     function spawnPowerUp() {
-      if (powerUps.length < 1 && Math.random() < 0.01) { // 1% chance for power-up
+      if (powerUps.length < 1 && Math.random() < 0.005) {
         const type = powerUpTypes[0];
         powerUps.push({
-          x: canvas.width + 100 + Math.random() * 200,
+          x: canvas.width + 100 + Math.random() * 300,
           y: type.y,
           width: type.width,
           height: type.height,
@@ -223,19 +227,26 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw clouds (background)
-      ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
-      clouds.forEach((cloud) => {
-        ctx.beginPath();
-        ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
-        ctx.fill();
+      // Draw background (moons and stars)
+      ctx.font = "30px serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      backgroundObjects.forEach((obj) => {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+        ctx.font = `${obj.size}px serif`;
+        ctx.fillText(obj.emoji, obj.x, obj.y);
       });
 
-      // Draw ground
-      ctx.fillStyle = "#555";
-      ctx.fillRect(0, 200, canvas.width, 50);
+      // Draw ground with emoji
+      ctx.font = "20px serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      for (let x = 0; x < canvas.width; x += 20) {
+        ctx.fillStyle = "#8B4513"; // Brown for ground
+        ctx.fillText("🟫", x, 250);
+      }
 
-      // Draw dino with run animation
+      // Draw dino
       ctx.save();
       ctx.translate(dino.x + dino.width / 2, dino.y);
       ctx.scale(-1, 1);
@@ -243,7 +254,7 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
       const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
-      ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white"; // Blink effect for shield
+      ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
       ctx.fillText(dinoEmoji, 0, 0);
       ctx.restore();
 
@@ -254,9 +265,14 @@
         ctx.textBaseline = "bottom";
         ctx.fillStyle = "white";
         ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y + obstacle.height);
-        // Add shadow
         ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
         ctx.fillRect(obstacle.x, 200, obstacle.width, 5);
+
+        // Debug collision boxes (optional)
+        /* ctx.strokeStyle = "red";
+        ctx.strokeRect(obstacle.x + 5, obstacle.y + 5, obstacle.width - 10, obstacle.height - 10);
+        ctx.strokeStyle = "blue";
+        ctx.strokeRect(dino.x + 5, dino.y + (dino.crouching ? 10 : 0), dino.width - 10, dino.height - (dino.crouching ? 10 : 0)); */
       });
 
       // Draw power-ups
@@ -277,11 +293,10 @@
       }
     }
 
-    function update(deltaTime) {
+    function update(deltaTime, timestamp) {
       if (gameOver) return;
 
-      // Update delta time for consistent movement
-      const dt = deltaTime / 16.67; // Normalize to 60 FPS
+      const dt = deltaTime / 16.67;
 
       // Update dino
       dino.y += dino.vy * dt;
@@ -298,17 +313,18 @@
         dino.y = 220;
       } else {
         dino.height = 40;
+        dino.y = Math.min(dino.y, 200);
       }
 
       // Update run animation
       dino.frame += dt;
       if (dino.frame > 20) dino.frame = 0;
 
-      // Update clouds
-      clouds.forEach((cloud) => {
-        cloud.x -= 1 * dt;
-        if (cloud.x < -cloud.size) {
-          cloud.x = canvas.width + cloud.size;
+      // Update background objects
+      backgroundObjects.forEach((obj) => {
+        obj.x -= 0.5 * dt; // Slower than obstacles
+        if (obj.x < -obj.size) {
+          obj.x = canvas.width + obj.size;
         }
       });
 
@@ -330,28 +346,39 @@
       });
 
       // Spawn new obstacles
-      if (Math.random() < 0.015 * dt) {
-        spawnObstacle();
-      }
+      spawnObstacle(timestamp);
 
       // Spawn power-ups
       spawnPowerUp();
 
-      // Increase game speed smoothly
-      gameSpeed = 6 + score / 200; // Slower increase
+      // Increase game speed
+      gameSpeed = 6 + score / 300;
 
       // Update jump cooldown
       if (dino.jumpCooldown > 0) {
         dino.jumpCooldown -= dt;
       }
 
-      // Collision detection for obstacles
+      // Collision detection
       for (let obstacle of obstacles) {
+        const dinoHitbox = {
+          x: dino.x + 5,
+          y: dino.y + (dino.crouching ? 10 : 0),
+          width: dino.width - 10,
+          height: dino.height - (dino.crouching ? 10 : 0),
+        };
+        const obstacleHitbox = {
+          x: obstacle.x + 5,
+          y: obstacle.y + 5,
+          width: obstacle.width - 10,
+          height: obstacle.height - 10,
+        };
+
         if (
-          dino.x < obstacle.x + obstacle.width * 0.8 &&
-          dino.x + dino.width * 0.8 > obstacle.x &&
-          dino.y < obstacle.y + obstacle.height * 0.8 &&
-          dino.y + dino.height * 0.8 > obstacle.y
+          dinoHitbox.x < obstacleHitbox.x + obstacleHitbox.width &&
+          dinoHitbox.x + dinoHitbox.width > obstacleHitbox.x &&
+          dinoHitbox.y < obstacleHitbox.y + obstacleHitbox.height &&
+          dinoHitbox.y + dinoHitbox.height > obstacleHitbox.y
         ) {
           if (hasShield) {
             hasShield = false;
@@ -366,7 +393,7 @@
         }
       }
 
-      // Collision detection for power-ups
+      // Power-up collision
       for (let powerUp of powerUps) {
         if (
           dino.x < powerUp.x + powerUp.width &&
@@ -384,9 +411,9 @@
 
     function jump() {
       if (!dino.jumping && !dino.crouching && dino.jumpCooldown <= 0) {
-        dino.vy = -14; // Slightly lower jump for smoother feel
+        dino.vy = -12;
         dino.jumping = true;
-        dino.jumpCooldown = 10; // Cooldown in frames
+        dino.jumpCooldown = 15;
       }
     }
 
@@ -400,7 +427,7 @@
       const deltaTime = timestamp - lastFrameTime;
       lastFrameTime = timestamp;
 
-      update(deltaTime);
+      update(deltaTime, timestamp);
       draw();
       requestAnimationFrame(loop);
     }
@@ -464,12 +491,12 @@
       dino.jumping = false;
       dino.crouching = false;
       dino.jumpCooldown = 0;
+      lastObstacleSpawn = 0;
       document.getElementById("game-over").classList.remove("show");
       document.getElementById("touch-btn").style.display = "block";
       requestAnimationFrame(loop);
     }
 
-    // On page load
     window.onload = () => {
       const savedName = localStorage.getItem("dinoNickname");
       if (savedName) {
