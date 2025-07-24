@@ -159,7 +159,7 @@
 
     const dino = {
       x: 50,
-      y: 200,
+      y: 180, // Aligned with gates
       vy: 0,
       width: 40,
       height: 40,
@@ -187,8 +187,8 @@
     ];
 
     const obstacleTypes = [
-      { type: "cactus", emoji: "🌵", width: 40, height: 40, y: 180 }, // Raised
-      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 }, // Lowered
+      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 180 }, // Changed to gate
+      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
     ];
 
     const powerUpTypes = [
@@ -242,7 +242,7 @@
       ctx.textAlign = "left";
       ctx.textBaseline = "bottom";
       for (let x = 0; x < canvas.width; x += 20) {
-        ctx.fillStyle = "#8B4513"; // Brown for ground
+        ctx.fillStyle = "#8B4513";
         ctx.fillText("🟫", x, 250);
       }
 
@@ -302,18 +302,18 @@
       dino.y += dino.vy * dt;
       dino.vy += gravity * dt;
 
-      if (dino.y > 200) {
-        dino.y = 200;
+      if (dino.y > 180) {
+        dino.y = 180;
         dino.vy = 0;
         dino.jumping = false;
       }
 
       if (dino.crouching) {
         dino.height = 20;
-        dino.y = 220;
+        dino.y = 200;
       } else {
         dino.height = 40;
-        dino.y = Math.min(dino.y, 200);
+        dino.y = Math.min(dino.y, 180);
       }
 
       // Update run animation
@@ -322,7 +322,7 @@
 
       // Update background objects
       backgroundObjects.forEach((obj) => {
-        obj.x -= 0.5 * dt; // Slower than obstacles
+        obj.x -= 0.5 * dt;
         if (obj.x < -obj.size) {
           obj.x = canvas.width + obj.size;
         }
@@ -486,7 +486,7 @@
       obstacles = [];
       powerUps = [];
       hasShield = false;
-      dino.y = 200;
+      dino.y = 180;
       dino.vy = 0;
       dino.jumping = false;
       dino.crouching = false;
