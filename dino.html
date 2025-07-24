@@ -5,7 +5,6 @@
   <title>MEGASaur Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    /* Your existing styles */
     body {
       margin: 0;
       background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
@@ -25,11 +24,11 @@
     .container {
       display: flex;
       flex-direction: row;
-      justify-content: center;
+      justify-content: space-between;
       align-items: flex-start;
-      flex-wrap: wrap;
-      max-width: 1400px;
+      flex-wrap: nowrap;
       width: 100%;
+      max-width: 1800px;
     }
 
     canvas {
@@ -46,6 +45,7 @@
       padding: 16px;
       margin: 20px;
       width: 260px;
+      min-width: 260px;
       box-shadow: 0 0 10px #00f0ff;
     }
 
@@ -78,6 +78,27 @@
       z-index: 10;
     }
 
+    #nickname-form {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      flex-direction: column;
+      color: white;
+    }
+
+    #nickname-form input {
+      padding: 0.5rem;
+      font-size: 1.2rem;
+      margin-top: 10px;
+    }
+
     @media (max-width: 768px) {
       .container {
         flex-direction: column;
@@ -94,7 +115,7 @@
   <h1>🦖 MEGASaur Runner</h1>
 
   <div class="container">
-    <canvas id="game" width="1200" height="200"></canvas>
+    <canvas id="game" width="1600" height="240"></canvas>
 
     <div id="leaderboard">
       <h2>🏆 Top 10 Dino Tamers</h2>
@@ -104,50 +125,57 @@
 
   <button id="touch-btn">TAP TO JUMP</button>
 
+  <div id="nickname-form">
+    <h2>Enter Your Dino Name</h2>
+    <input type="text" id="nickname" placeholder="e.g. MegaRex" maxlength="12" />
+    <button onclick="startGame()">Start</button>
+  </div>
+
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
 
     const dino = {
-      x: 50,          // start position on left side
-      y: 140,
+      x: 50,
+      y: 160,
       vy: 0,
       width: 40,
       height: 40,
       jumping: false,
     };
 
-    const gravity = 2;
+    const gravity = 1.8;
     let obstacle = {
-      x: canvas.width + 100, // start offscreen on right
-      y: 140,
+      x: canvas.width + 100,
+      y: 160,
       width: 40,
       height: 40,
     };
 
     let score = 0;
     let gameOver = false;
+    let nickname = "";
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw flipped dino (face right)
+      // Flipped Dino
       ctx.save();
-      ctx.translate(dino.x + dino.width / 2, dino.y);  // move origin to dino center
-      ctx.scale(-1, 1);                               // flip horizontally
+      ctx.translate(dino.x + dino.width / 2, dino.y);
+      ctx.scale(-1, 1);
       ctx.font = "32px serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
       ctx.fillText("🦖", 0, 0);
       ctx.restore();
 
-      // Draw obstacle (shinto shrine)
+      // Obstacle
       ctx.font = "40px serif";
       ctx.textAlign = "left";
       ctx.textBaseline = "bottom";
       ctx.fillText("⛩️", obstacle.x, obstacle.y + obstacle.height);
 
-      // Draw score
+      // Score
       ctx.fillStyle = "#00f0ff";
       ctx.font = "20px monospace";
       ctx.fillText("Score: " + score, 10, 30);
@@ -159,8 +187,8 @@
       dino.y += dino.vy;
       dino.vy += gravity;
 
-      if (dino.y > 140) {
-        dino.y = 140;
+      if (dino.y > 160) {
+        dino.y = 160;
         dino.vy = 0;
         dino.jumping = false;
       }
@@ -171,7 +199,6 @@
         score++;
       }
 
-      // Collision detection (simple bounding box)
       if (
         dino.x < obstacle.x + obstacle.width &&
         dino.x + dino.width > obstacle.x &&
@@ -179,7 +206,7 @@
         dino.y + dino.height > obstacle.y
       ) {
         gameOver = true;
-        saveScore(score);
+        saveScore(score, nickname);
         setTimeout(() => {
           alert("🦖 Game Over! Final Score: " + score);
           document.location.reload();
@@ -189,7 +216,7 @@
 
     function jump() {
       if (!dino.jumping) {
-        dino.vy = -25;
+        dino.vy = -18;
         dino.jumping = true;
       }
     }
@@ -206,10 +233,10 @@
 
     document.getElementById("touch-btn").addEventListener("click", jump);
 
-    function saveScore(newScore) {
+    function saveScore(newScore, name) {
       let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
-      scores.push(newScore);
-      scores = scores.sort((a, b) => b - a).slice(0, 10);
+      scores.push({ name: name || "Anonymous", score: newScore });
+      scores = scores.sort((a, b) => b.score - a.score).slice(0, 10);
       localStorage.setItem("megasaurScores", JSON.stringify(scores));
       showLeaderboard();
     }
@@ -218,15 +245,20 @@
       let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
       const list = document.getElementById("scores");
       list.innerHTML = "";
-      scores.forEach((s, i) => {
+      scores.forEach((entry, i) => {
         const li = document.createElement("li");
-        li.textContent = `#${i + 1}: ${s}`;
+        li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
         list.appendChild(li);
       });
     }
 
-    showLeaderboard();
-    loop();
+    function startGame() {
+      const input = document.getElementById("nickname");
+      nickname = input.value.trim() || "Anonymous";
+      document.getElementById("nickname-form").style.display = "none";
+      showLeaderboard();
+      loop();
+    }
   </script>
 </body>
 </html>
