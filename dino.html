@@ -67,4 +67,108 @@
 <body>
   <h1>🦖 MEGASaur Runner</h1>
   <canvas id="game" width="600" height="150"></canvas>
-  <button id="touch-btn">TA
+  <button id="touch-btn">TAP TO JUMP</button>
+  <div id="leaderboard">
+    <h2>🏆 Top 10 Dino Tamers</h2>
+    <ol id="scores"></ol>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const dinoImg = new Image();
+    dinoImg.src = "https://i.imgur.com/Dq7qJkH.png"; // transparent MEGASaur sprite
+
+    let dino = { x: 50, y: 100, vy: 0, width: 48, height: 48, jumping: false };
+    let gravity = 2;
+    let cactus = { x: 600, y: 110, width: 20, height: 40 };
+    let score = 0;
+    let gameOver = false;
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
+      ctx.fillStyle = "#ff2e63";
+      ctx.fillRect(cactus.x, cactus.y, cactus.width, cactus.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "16px monospace";
+      ctx.fillText("Score: " + score, 10, 20);
+    }
+
+    function update() {
+      if (gameOver) return;
+      dino.y += dino.vy;
+      dino.vy += gravity;
+
+      if (dino.y > 100) {
+        dino.y = 100;
+        dino.vy = 0;
+        dino.jumping = false;
+      }
+
+      cactus.x -= 6;
+      if (cactus.x < -20) {
+        cactus.x = 600 + Math.random() * 300;
+        score++;
+      }
+
+      if (
+        dino.x < cactus.x + cactus.width &&
+        dino.x + dino.width > cactus.x &&
+        dino.y < cactus.y + cactus.height &&
+        dino.y + dino.height > cactus.y
+      ) {
+        gameOver = true;
+        saveScore(score);
+        setTimeout(() => {
+          alert("🦖 Game Over! Final Score: " + score);
+          document.location.reload();
+        }, 200);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function jump() {
+      if (!dino.jumping) {
+        dino.vy = -24;
+        dino.jumping = true;
+      }
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") jump();
+    });
+
+    document.getElementById("touch-btn").addEventListener("click", jump);
+
+    function saveScore(newScore) {
+      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
+      scores.push(newScore);
+      scores = scores.sort((a, b) => b - a).slice(0, 10);
+      localStorage.setItem("megasaurScores", JSON.stringify(scores));
+    }
+
+    function showLeaderboard() {
+      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
+      const list = document.getElementById("scores");
+      list.innerHTML = "";
+      scores.forEach((s, i) => {
+        const li = document.createElement("li");
+        li.textContent = `#${i + 1}: ${s}`;
+        list.appendChild(li);
+      });
+    }
+
+    dinoImg.onload = () => {
+      loop();
+      showLeaderboard();
+    };
+  </script>
+</body>
+</html>
