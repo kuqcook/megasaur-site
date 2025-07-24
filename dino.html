@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <title>MEGASaur Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
   <style>
     body {
       margin: 0;
@@ -154,12 +157,32 @@
   <button id="touch-btn">TAP TO JUMP</button>
 
   <script>
+    // Inicjalizacja Firebase
+    let database;
+    try {
+      const firebaseConfig = {
+        // Wstaw swoją konfigurację Firebase tutaj
+        apiKey: "AIzaSyACFWv9js50STTex2TzTjEubBP_3heZXgc",
+        authDomain: "megasaur-runner.firebaseapp.com",
+        databaseURL: "https://megasaur-runner-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "megasaur-runner",
+        storageBucket: "megasaur-runner.firebasestorage.app",
+        messagingSenderId: "222910326781",
+        appId: "1:222910326781:web:b92195977fda4af2661b94"
+      };
+      firebase.initializeApp(firebaseConfig);
+      database = firebase.database();
+    } catch (error) {
+      console.error("Firebase initialization error:", error);
+      document.getElementById("scores").innerHTML = "<li>Failed to connect to leaderboard.</li>";
+    }
+
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
 
     const dino = {
       x: 50,
-      y: 230, // Aligned with ground level
+      y: 230,
       vy: 0,
       width: 40,
       height: 40,
@@ -186,16 +209,16 @@
     ];
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 }, // Aligned with ground
+      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
       { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
     ];
 
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 }, // Aligned with ground
+      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 },
     ];
 
     function spawnObstacle(timestamp) {
-      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
+      if (obstacles.length < 2 && timestamp FortyTwo lastObstacleSpawn > 1000) {
         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
         obstacles.push({
           x: canvas.width + 100 + Math.random() * 300,
@@ -419,22 +442,51 @@
     });
 
     function saveScore(newScore, name) {
-      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
-      scores.push({ name: name || "Anonymous", score: newScore });
-      scores = scores.sort((a, b) => b.score - a.score).slice(0, 10);
-      localStorage.setItem("megasaurScores", JSON.stringify(scores));
-      showLeaderboard();
+      if (!database) {
+        console.error("Database not initialized, cannot save score.");
+        return;
+      }
+      const scoreRef = database.ref("scores");
+      scoreRef
+        .push({
+          name: name || "Anonymous",
+          score: newScore,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        })
+        .then(() => {
+          // Leaderboard aktualizuje się automatycznie dzięki metodzie 'on'
+        })
+        .catch((error) => {
+          console.error("Error saving score:", error);
+          document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
+        });
     }
 
     function showLeaderboard() {
-      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
       const list = document.getElementById("scores");
-      list.innerHTML = "";
-      scores.forEach((entry, i) => {
-        const li = document.createElement("li");
-        li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
-        list.appendChild(li);
-      });
+      if (!database) {
+        list.innerHTML = "<li>Failed to connect to leaderboard.</li>";
+        return;
+      }
+      const scoreRef = database.ref("scores");
+      scoreRef
+        .orderByChild("score")
+        .limitToLast(10)
+        .on("value", (snapshot) => {
+          list.innerHTML = "";
+          const scores = [];
+          snapshot.forEach((child) => {
+            scores.push(child.val());
+          });
+          scores.reverse().forEach((entry, i) => {
+            const li = document.createElement("li");
+            li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
+            list.appendChild(li);
+          });
+        }, (error) => {
+          console.error("Error updating leaderboard:", error);
+          list.innerHTML = "<li>Failed to load leaderboard.</li>";
+        });
     }
 
     function startGame() {
