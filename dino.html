@@ -5,6 +5,7 @@
   <title>MEGASaur Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    /* Your existing styles */
     body {
       margin: 0;
       background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
@@ -108,7 +109,7 @@
     const ctx = canvas.getContext("2d");
 
     const dino = {
-      x: canvas.width 0,
+      x: 50,          // start position on left side
       y: 140,
       vy: 0,
       width: 40,
@@ -118,8 +119,8 @@
 
     const gravity = 2;
     let obstacle = {
-      x: canvas.width - 100,
-      y: 150,
+      x: canvas.width + 100, // start offscreen on right
+      y: 140,
       width: 40,
       height: 40,
     };
@@ -130,19 +131,26 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // draw flipped dino (facing right)
-      ctx.font = "32px serif";
+      // Draw flipped dino (face right)
       ctx.save();
-      ctx.scale(-1, 1);
-      ctx.fillText("🦖", -dino.x, dino.y);
+      ctx.translate(dino.x + dino.width / 2, dino.y);  // move origin to dino center
+      ctx.scale(-1, 1);                               // flip horizontally
+      ctx.font = "32px serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("🦖", 0, 0);
       ctx.restore();
 
-      // draw obstacle
-      ctx.fillText("⛩️", obstacle.x, obstacle.y);
+      // Draw obstacle (shinto shrine)
+      ctx.font = "40px serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      ctx.fillText("⛩️", obstacle.x, obstacle.y + obstacle.height);
 
-      ctx.fillStyle = "#fff";
-      ctx.font = "16px monospace";
-      ctx.fillText("Score: " + score, 10, 20);
+      // Draw score
+      ctx.fillStyle = "#00f0ff";
+      ctx.font = "20px monospace";
+      ctx.fillText("Score: " + score, 10, 30);
     }
 
     function update() {
@@ -158,17 +166,17 @@
       }
 
       obstacle.x -= 6;
-      if (obstacle.x < - 40) {
+      if (obstacle.x < -obstacle.width) {
         obstacle.x = canvas.width + Math.random() * 300;
         score++;
       }
 
-      // Collision Detection
+      // Collision detection (simple bounding box)
       if (
         dino.x < obstacle.x + obstacle.width &&
         dino.x + dino.width > obstacle.x &&
-        dino.y < obstacle.y &&
-        dino.y + dino.height > obstacle.y - 40
+        dino.y < obstacle.y + obstacle.height &&
+        dino.y + dino.height > obstacle.y
       ) {
         gameOver = true;
         saveScore(score);
@@ -203,6 +211,7 @@
       scores.push(newScore);
       scores = scores.sort((a, b) => b - a).slice(0, 10);
       localStorage.setItem("megasaurScores", JSON.stringify(scores));
+      showLeaderboard();
     }
 
     function showLeaderboard() {
