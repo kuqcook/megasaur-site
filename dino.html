@@ -13,6 +13,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      overflow: hidden;
     }
 
     h1 {
@@ -37,6 +38,7 @@
       border-radius: 16px;
       margin: 20px;
       flex-grow: 1;
+      image-rendering: pixelated;
     }
 
     #leaderboard {
@@ -77,20 +79,21 @@
       z-index: 10;
     }
 
-    #nickname-form {
+    #nickname-form, #game-over {
       display: none;
       flex-direction: column;
       align-items: center;
       margin-top: 20px;
+      transition: opacity 0.5s ease-in-out;
     }
 
-    #nickname-form input {
+    #nickname-form input, #game-over button {
       padding: 8px;
       font-size: 1rem;
       margin-top: 8px;
     }
 
-    #nickname-form button {
+    #nickname-form button, #game-over button {
       padding: 8px 16px;
       margin-top: 8px;
       font-size: 1rem;
@@ -98,6 +101,18 @@
       color: black;
       border: none;
       cursor: pointer;
+    }
+
+    #game-over.show {
+      display: flex;
+      opacity: 1;
+    }
+
+    #game-over {
+      opacity: 0;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
     }
 
     @media (max-width: 768px) {
@@ -121,6 +136,12 @@
     <button onclick="startGame()">Start Game</button>
   </div>
 
+  <div id="game-over">
+    <h2>Game Over!</h2>
+    <p id="final-score"></p>
+    <button onclick="restartGame()">Play Again</button>
+  </div>
+
   <div class="container">
     <canvas id="game" width="1400" height="250"></canvas>
 
@@ -130,7 +151,7 @@
     </div>
   </div>
 
-  <button id="touch-btn">TAP TO JUMP</button>
+  <button id="touch-btn">TAP TO JUMP / HOLD TO CROUCH</button>
 
   <script>
     const canvas = document.getElementById("game");
@@ -143,50 +164,128 @@
       width: 40,
       height: 40,
       jumping: false,
+      crouching: false,
+      jumpCooldown: 0,
+      frame: 0, // For run animation
     };
 
-    const gravity = 0.9;
-    let obstacle = {
-      x: canvas.width + 100,
-      y: 200,
-      width: 40,
-      height: 40,
-    };
-
+    const gravity = 0.6; // Reduced for smoother jump
+    let obstacles = [];
+    let powerUps = [];
     let score = 0;
+    let gameSpeed = 6;
     let gameOver = false;
     let nickname = "";
+    let hasShield = false;
+    let lastFrameTime = performance.now();
+    let clouds = [
+      { x: canvas.width, y: 50, size: 30 },
+      { x: canvas.width + 400, y: 80, size: 40 },
+    ];
+
+    const obstacleTypes = [
+      { type: "cactus", emoji: "🌵", width: 40, height: 40, y: 200 },
+      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 150 },
+    ];
+
+    const powerUpTypes = [
+      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 180 },
+    ];
+
+    function spawnObstacle() {
+      if (obstacles.length < 3) { // Limit number of obstacles
+        const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+        obstacles.push({
+          x: canvas.width + 100 + Math.random() * 200,
+          y: type.y,
+          width: type.width,
+          height: type.height,
+          type: type.type,
+          emoji: type.emoji,
+        });
+      }
+    }
+
+    function spawnPowerUp() {
+      if (powerUps.length < 1 && Math.random() < 0.01) { // 1% chance for power-up
+        const type = powerUpTypes[0];
+        powerUps.push({
+          x: canvas.width + 100 + Math.random() * 200,
+          y: type.y,
+          width: type.width,
+          height: type.height,
+          type: type.type,
+          emoji: type.emoji,
+        });
+      }
+    }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw flipped dino facing right
+      // Draw clouds (background)
+      ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+      clouds.forEach((cloud) => {
+        ctx.beginPath();
+        ctx.arc(cloud.x, cloud.y, cloud.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Draw ground
+      ctx.fillStyle = "#555";
+      ctx.fillRect(0, 200, canvas.width, 50);
+
+      // Draw dino with run animation
       ctx.save();
       ctx.translate(dino.x + dino.width / 2, dino.y);
       ctx.scale(-1, 1);
-      ctx.font = "32px serif";
+      ctx.font = dino.crouching ? "24px serif" : "32px serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
-      ctx.fillText("🦖", 0, 0);
+      const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
+      ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white"; // Blink effect for shield
+      ctx.fillText(dinoEmoji, 0, 0);
       ctx.restore();
 
-      // Draw obstacle
-      ctx.font = "40px serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      ctx.fillText("⛩️", obstacle.x, obstacle.y + obstacle.height);
+      // Draw obstacles
+      obstacles.forEach((obstacle) => {
+        ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        ctx.fillStyle = "white";
+        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y + obstacle.height);
+        // Add shadow
+        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+        ctx.fillRect(obstacle.x, 200, obstacle.width, 5);
+      });
 
-      // Draw score
+      // Draw power-ups
+      powerUps.forEach((powerUp) => {
+        ctx.font = "30px serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        ctx.fillStyle = "yellow";
+        ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y + powerUp.height);
+      });
+
+      // Draw score and shield status
       ctx.fillStyle = "#00f0ff";
       ctx.font = "20px monospace";
-      ctx.fillText("Score: " + score, 10, 30);
+      ctx.fillText(`Score: ${score}`, 10, 30);
+      if (hasShield) {
+        ctx.fillText("🛡️ Shield Active!", 10, 60);
+      }
     }
 
-    function update() {
+    function update(deltaTime) {
       if (gameOver) return;
 
-      dino.y += dino.vy;
-      dino.vy += gravity;
+      // Update delta time for consistent movement
+      const dt = deltaTime / 16.67; // Normalize to 60 FPS
+
+      // Update dino
+      dino.y += dino.vy * dt;
+      dino.vy += gravity * dt;
 
       if (dino.y > 200) {
         dino.y = 200;
@@ -194,46 +293,136 @@
         dino.jumping = false;
       }
 
-      obstacle.x -= 6;
-      if (obstacle.x < -obstacle.width) {
-        obstacle.x = canvas.width + Math.random() * 300;
-        score++;
+      if (dino.crouching) {
+        dino.height = 20;
+        dino.y = 220;
+      } else {
+        dino.height = 40;
       }
 
-      // Collision detection
-      if (
-        dino.x < obstacle.x + obstacle.width &&
-        dino.x + dino.width > obstacle.x &&
-        dino.y < obstacle.y + obstacle.height &&
-        dino.y + dino.height > obstacle.y
-      ) {
-        gameOver = true;
-        saveScore(score, nickname);
-        setTimeout(() => {
-          alert("🦖 Game Over! Final Score: " + score);
-          document.location.reload();
-        }, 300);
+      // Update run animation
+      dino.frame += dt;
+      if (dino.frame > 20) dino.frame = 0;
+
+      // Update clouds
+      clouds.forEach((cloud) => {
+        cloud.x -= 1 * dt;
+        if (cloud.x < -cloud.size) {
+          cloud.x = canvas.width + cloud.size;
+        }
+      });
+
+      // Update obstacles
+      obstacles.forEach((obstacle, index) => {
+        obstacle.x -= gameSpeed * dt;
+        if (obstacle.x < -obstacle.width) {
+          obstacles.splice(index, 1);
+          score++;
+        }
+      });
+
+      // Update power-ups
+      powerUps.forEach((powerUp, index) => {
+        powerUp.x -= gameSpeed * dt;
+        if (powerUp.x < -powerUp.width) {
+          powerUps.splice(index, 1);
+        }
+      });
+
+      // Spawn new obstacles
+      if (Math.random() < 0.015 * dt) {
+        spawnObstacle();
+      }
+
+      // Spawn power-ups
+      spawnPowerUp();
+
+      // Increase game speed smoothly
+      gameSpeed = 6 + score / 200; // Slower increase
+
+      // Update jump cooldown
+      if (dino.jumpCooldown > 0) {
+        dino.jumpCooldown -= dt;
+      }
+
+      // Collision detection for obstacles
+      for (let obstacle of obstacles) {
+        if (
+          dino.x < obstacle.x + obstacle.width * 0.8 &&
+          dino.x + dino.width * 0.8 > obstacle.x &&
+          dino.y < obstacle.y + obstacle.height * 0.8 &&
+          dino.y + dino.height * 0.8 > obstacle.y
+        ) {
+          if (hasShield) {
+            hasShield = false;
+            obstacles.splice(obstacles.indexOf(obstacle), 1);
+          } else {
+            gameOver = true;
+            saveScore(score, nickname);
+            document.getElementById("final-score").textContent = `Final Score: ${score}`;
+            document.getElementById("game-over").classList.add("show");
+            document.getElementById("touch-btn").style.display = "none";
+          }
+        }
+      }
+
+      // Collision detection for power-ups
+      for (let powerUp of powerUps) {
+        if (
+          dino.x < powerUp.x + powerUp.width &&
+          dino.x + dino.width > powerUp.x &&
+          dino.y < powerUp.y + powerUp.height &&
+          dino.y + dino.height > powerUp.y
+        ) {
+          if (powerUp.type === "shield") {
+            hasShield = true;
+            powerUps.splice(powerUps.indexOf(powerUp), 1);
+          }
+        }
       }
     }
 
     function jump() {
-      if (!dino.jumping) {
-        dino.vy = -16;
+      if (!dino.jumping && !dino.crouching && dino.jumpCooldown <= 0) {
+        dino.vy = -14; // Slightly lower jump for smoother feel
         dino.jumping = true;
+        dino.jumpCooldown = 10; // Cooldown in frames
       }
     }
 
-    function loop() {
-      update();
+    function crouch(state) {
+      if (!dino.jumping) {
+        dino.crouching = state;
+      }
+    }
+
+    function loop(timestamp) {
+      const deltaTime = timestamp - lastFrameTime;
+      lastFrameTime = timestamp;
+
+      update(deltaTime);
       draw();
       requestAnimationFrame(loop);
     }
 
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") jump();
+      if (e.code === "ArrowDown") crouch(true);
     });
 
-    document.getElementById("touch-btn").addEventListener("click", jump);
+    window.addEventListener("keyup", (e) => {
+      if (e.code === "ArrowDown") crouch(false);
+    });
+
+    document.getElementById("touch-btn").addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      if (!dino.crouching) jump();
+      crouch(true);
+    });
+
+    document.getElementById("touch-btn").addEventListener("touchend", () => {
+      crouch(false);
+    });
 
     function saveScore(newScore, name) {
       let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
@@ -260,7 +449,24 @@
       localStorage.setItem("dinoNickname", nickname);
       document.getElementById("nickname-form").style.display = "none";
       showLeaderboard();
-      loop();
+      requestAnimationFrame(loop);
+    }
+
+    function restartGame() {
+      score = 0;
+      gameSpeed = 6;
+      gameOver = false;
+      obstacles = [];
+      powerUps = [];
+      hasShield = false;
+      dino.y = 200;
+      dino.vy = 0;
+      dino.jumping = false;
+      dino.crouching = false;
+      dino.jumpCooldown = 0;
+      document.getElementById("game-over").classList.remove("show");
+      document.getElementById("touch-btn").style.display = "block";
+      requestAnimationFrame(loop);
     }
 
     // On page load
@@ -270,7 +476,7 @@
         nickname = savedName;
         document.getElementById("nickname-form").style.display = "none";
         showLeaderboard();
-        loop();
+        requestAnimationFrame(loop);
       } else {
         document.getElementById("nickname-form").style.display = "flex";
       }
