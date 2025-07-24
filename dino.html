@@ -159,7 +159,7 @@
 
     const dino = {
       x: 50,
-      y: 230, // Aligned with new ground level
+      y: 230, // Aligned with ground level
       vy: 0,
       width: 40,
       height: 40,
@@ -187,12 +187,12 @@
     ];
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 }, // Aligned with new ground
+      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 }, // Aligned with ground
       { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
     ];
 
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 }, // Aligned with new ground
+      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 }, // Aligned with ground
     ];
 
     function spawnObstacle(timestamp) {
@@ -265,14 +265,16 @@
         ctx.textBaseline = "bottom";
         ctx.fillStyle = "white";
         ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y + obstacle.height);
-        ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-        ctx.fillRect(obstacle.x, 230, obstacle.width, 5); // Shadow aligned with new ground
+        if (obstacle.type === "gate") {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+          ctx.fillRect(obstacle.x, 230, obstacle.width, 5); // Shadow only for gates
+        }
 
         // Debug collision boxes (optional)
-        /* ctx.strokeStyle = "red";
+        ctx.strokeStyle = "red";
         ctx.strokeRect(obstacle.x + 5, obstacle.y + 5, obstacle.width - 10, obstacle.height - 10);
         ctx.strokeStyle = "blue";
-        ctx.strokeRect(dino.x + 5, dino.y + (dino.crouching ? 10 : 0), dino.width - 10, dino.height - (dino.crouching ? 10 : 0)); */
+        ctx.strokeRect(dino.x + 5, dino.y + (dino.crouching ? 10 : 0), dino.width - 10, dino.height - (dino.crouching ? 10 : 0));
       });
 
       // Draw power-ups
