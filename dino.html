@@ -1,264 +1,144 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>MEGASaur Runner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      margin: 0;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+<script>
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const dino = {
+    x: 50,
+    y: 160,
+    vy: 0,
+    width: 40,
+    height: 40,
+    jumping: false,
+  };
+
+  const gravity = 1.2;
+  let obstacle = {
+    x: canvas.width + 100,
+    y: 160,
+    width: 40,
+    height: 40,
+  };
+
+  let score = 0;
+  let gameOver = false;
+  let nickname = "";
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw flipped dino
+    ctx.save();
+    ctx.translate(dino.x + dino.width / 2, dino.y);
+    ctx.scale(-1, 1);
+    ctx.font = "32px serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("🦖", 0, 0);
+    ctx.restore();
+
+    // Obstacle
+    ctx.font = "40px serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("⛩️", obstacle.x, obstacle.y + obstacle.height);
+
+    // Score
+    ctx.fillStyle = "#00f0ff";
+    ctx.font = "20px monospace";
+    ctx.fillText("Score: " + score, 10, 30);
+  }
+
+  function update() {
+    if (gameOver) return;
+
+    dino.y += dino.vy;
+    dino.vy += gravity;
+
+    if (dino.y > 160) {
+      dino.y = 160;
+      dino.vy = 0;
+      dino.jumping = false;
     }
 
-    h1 {
-      margin-top: 20px;
-      font-size: 2rem;
-      text-shadow: 2px 2px #00f0ff;
+    obstacle.x -= 6;
+    if (obstacle.x < -obstacle.width) {
+      obstacle.x = canvas.width + Math.random() * 300;
+      score++;
     }
 
-    .container {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: flex-start;
-      flex-wrap: nowrap;
-      width: 100%;
-      max-width: 1800px;
+    // Collision
+    if (
+      dino.x < obstacle.x + obstacle.width &&
+      dino.x + dino.width > obstacle.x &&
+      dino.y < obstacle.y + obstacle.height &&
+      dino.y + dino.height > obstacle.y
+    ) {
+      gameOver = true;
+      saveScore(score, nickname);
+      setTimeout(() => {
+        alert("🦖 Game Over! Final Score: " + score);
+        document.location.reload();
+      }, 300);
     }
+  }
 
-    canvas {
-      background: rgba(0, 0, 0, 0.5);
-      border: 4px solid #00f0ff;
-      border-radius: 16px;
-      margin: 20px;
-      flex-grow: 1;
+  function jump() {
+    if (!dino.jumping) {
+      dino.vy = -14;
+      dino.jumping = true;
     }
+  }
 
-    #leaderboard {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      padding: 16px;
-      margin: 20px;
-      width: 260px;
-      min-width: 260px;
-      box-shadow: 0 0 10px #00f0ff;
-    }
+  function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
 
-    #leaderboard h2 {
-      margin-bottom: 10px;
-      font-size: 1.3rem;
-    }
+  window.addEventListener("keydown", (e) => {
+    if (e.code === "Space") jump();
+  });
 
-    ol#scores {
-      padding-left: 20px;
-    }
+  document.getElementById("touch-btn").addEventListener("click", jump);
 
-    ol#scores li {
-      font-size: 1rem;
-      color: #00f0ff;
-    }
+  function saveScore(newScore, name) {
+    let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
+    scores.push({ name: name || "Anonymous", score: newScore });
+    scores = scores.sort((a, b) => b.score - a.score).slice(0, 10);
+    localStorage.setItem("megasaurScores", JSON.stringify(scores));
+    showLeaderboard();
+  }
 
-    #touch-btn {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      padding: 1rem;
-      font-size: 1.5rem;
-      font-weight: bold;
-      background: #00f0ff;
-      color: #000;
-      border: none;
-      border-top: 2px solid #fff;
-      z-index: 10;
-    }
-
-    #nickname-form {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 20;
-      flex-direction: column;
-      color: white;
-    }
-
-    #nickname-form input {
-      padding: 0.5rem;
-      font-size: 1.2rem;
-      margin-top: 10px;
-    }
-
-    @media (max-width: 768px) {
-      .container {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      canvas {
-        width: 100% !important;
-      }
-    }
-  </style>
-</head>
-<body>
-  <h1>🦖 MEGASaur Runner</h1>
-
-  <div class="container">
-    <canvas id="game" width="1600" height="240"></canvas>
-
-    <div id="leaderboard">
-      <h2>🏆 Top 10 Dino Tamers</h2>
-      <ol id="scores"></ol>
-    </div>
-  </div>
-
-  <button id="touch-btn">TAP TO JUMP</button>
-
-  <div id="nickname-form">
-    <h2>Enter Your Dino Name</h2>
-    <input type="text" id="nickname" placeholder="e.g. MegaRex" maxlength="12" />
-    <button onclick="startGame()">Start</button>
-  </div>
-
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
-
-    const dino = {
-      x: 50,
-      y: 160,
-      vy: 0,
-      width: 40,
-      height: 40,
-      jumping: false,
-    };
-
-    const gravity = 1.8;
-    let obstacle = {
-      x: canvas.width + 100,
-      y: 160,
-      width: 40,
-      height: 40,
-    };
-
-    let score = 0;
-    let gameOver = false;
-    let nickname = "";
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Flipped Dino
-      ctx.save();
-      ctx.translate(dino.x + dino.width / 2, dino.y);
-      ctx.scale(-1, 1);
-      ctx.font = "32px serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.fillText("🦖", 0, 0);
-      ctx.restore();
-
-      // Obstacle
-      ctx.font = "40px serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      ctx.fillText("⛩️", obstacle.x, obstacle.y + obstacle.height);
-
-      // Score
-      ctx.fillStyle = "#00f0ff";
-      ctx.font = "20px monospace";
-      ctx.fillText("Score: " + score, 10, 30);
-    }
-
-    function update() {
-      if (gameOver) return;
-
-      dino.y += dino.vy;
-      dino.vy += gravity;
-
-      if (dino.y > 160) {
-        dino.y = 160;
-        dino.vy = 0;
-        dino.jumping = false;
-      }
-
-      obstacle.x -= 6;
-      if (obstacle.x < -obstacle.width) {
-        obstacle.x = canvas.width + Math.random() * 300;
-        score++;
-      }
-
-      if (
-        dino.x < obstacle.x + obstacle.width &&
-        dino.x + dino.width > obstacle.x &&
-        dino.y < obstacle.y + obstacle.height &&
-        dino.y + dino.height > obstacle.y
-      ) {
-        gameOver = true;
-        saveScore(score, nickname);
-        setTimeout(() => {
-          alert("🦖 Game Over! Final Score: " + score);
-          document.location.reload();
-        }, 300);
-      }
-    }
-
-    function jump() {
-      if (!dino.jumping) {
-        dino.vy = -18;
-        dino.jumping = true;
-      }
-    }
-
-    function loop() {
-      update();
-      draw();
-      requestAnimationFrame(loop);
-    }
-
-    window.addEventListener("keydown", (e) => {
-      if (e.code === "Space") jump();
+  function showLeaderboard() {
+    let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
+    const list = document.getElementById("scores");
+    list.innerHTML = "";
+    scores.forEach((entry, i) => {
+      const li = document.createElement("li");
+      li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
+      list.appendChild(li);
     });
+  }
 
-    document.getElementById("touch-btn").addEventListener("click", jump);
+  function startGame() {
+    const input = document.getElementById("nickname");
+    nickname = input.value.trim() || "Anonymous";
+    localStorage.setItem("dinoNickname", nickname);
+    document.getElementById("nickname-form").style.display = "none";
+    showLeaderboard();
+    loop();
+  }
 
-    function saveScore(newScore, name) {
-      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
-      scores.push({ name: name || "Anonymous", score: newScore });
-      scores = scores.sort((a, b) => b.score - a.score).slice(0, 10);
-      localStorage.setItem("megasaurScores", JSON.stringify(scores));
-      showLeaderboard();
-    }
-
-    function showLeaderboard() {
-      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
-      const list = document.getElementById("scores");
-      list.innerHTML = "";
-      scores.forEach((entry, i) => {
-        const li = document.createElement("li");
-        li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
-        list.appendChild(li);
-      });
-    }
-
-    function startGame() {
-      const input = document.getElementById("nickname");
-      nickname = input.value.trim() || "Anonymous";
+  // Check if nickname already saved
+  window.onload = () => {
+    const savedName = localStorage.getItem("dinoNickname");
+    if (savedName) {
+      nickname = savedName;
       document.getElementById("nickname-form").style.display = "none";
       showLeaderboard();
       loop();
+    } else {
+      document.getElementById("nickname-form").style.display = "flex";
     }
-  </script>
-</body>
-</html>
+  };
+</script>
