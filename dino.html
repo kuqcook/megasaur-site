@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MEGASaur Runner</title>
+  <style>
+    body {
+      margin: 0;
+      background: #1a1a2e;
+      color: #fff;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    canvas {
+      background: #222;
+      border: 4px solid #00f0ff;
+      border-radius: 12px;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>MEGASaur Runner</h1>
+  <canvas id="game" width="600" height="150"></canvas>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    let dino = { x: 50, y: 100, vy: 0, width: 30, height: 30, jumping: false };
+    let gravity = 2;
+    let cactus = { x: 600, y: 110, width: 20, height: 40 };
+    let score = 0;
+    let gameOver = false;
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#00f0ff";
+      ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+      ctx.fillStyle = "#f00";
+      ctx.fillRect(cactus.x, cactus.y, cactus.width, cactus.height);
+      ctx.fillStyle = "#fff";
+      ctx.fillText("Score: " + score, 10, 20);
+    }
+
+    function update() {
+      if (gameOver) return;
+      dino.y += dino.vy;
+      dino.vy += gravity;
+
+      if (dino.y > 100) {
+        dino.y = 100;
+        dino.vy = 0;
+        dino.jumping = false;
+      }
+
+      cactus.x -= 6;
+      if (cactus.x < -20) {
+        cactus.x = 600 + Math.random() * 300;
+        score++;
+      }
+
+      // collision
+      if (
+        dino.x < cactus.x + cactus.width &&
+        dino.x + dino.width > cactus.x &&
+        dino.y < cactus.y + cactus.height &&
+        dino.y + dino.height > cactus.y
+      ) {
+        gameOver = true;
+        alert("Game Over! Score: " + score);
+        document.location.reload();
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && !dino.jumping) {
+        dino.vy = -25;
+        dino.jumping = true;
+      }
+    });
+
+    loop();
+  </script>
+</body>
+</html>
