@@ -151,7 +151,7 @@
     </div>
   </div>
 
-  <button id="touch-btn">TAP TO JUMP / HOLD TO CROUCH</button>
+  <button id="touch-btn">TAP TO JUMP</button>
 
   <script>
     const canvas = document.getElementById("game");
@@ -164,7 +164,6 @@
       width: 40,
       height: 40,
       jumping: false,
-      crouching: false,
       jumpCooldown: 0,
       frame: 0,
     };
@@ -211,7 +210,7 @@
     }
 
     function spawnPowerUp() {
-      if (powerUps.length < 1 && Math.random() < 0.001) { // Reduced probability
+      if (powerUps.length < 1 && Math.random() < 0.001) {
         const type = powerUpTypes[0];
         powerUps.push({
           x: canvas.width + 100 + Math.random() * 300,
@@ -250,7 +249,7 @@
       ctx.save();
       ctx.translate(dino.x + dino.width / 2, dino.y);
       ctx.scale(-1, 1);
-      ctx.font = dino.crouching ? "24px serif" : "32px serif";
+      ctx.font = "32px serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
       const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
@@ -264,7 +263,7 @@
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.fillStyle = "white";
-        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y); // Aligned base at y = 230
+        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
       });
 
       // Draw power-ups
@@ -273,7 +272,7 @@
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.fillStyle = "yellow";
-        ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y); // Aligned base at y = 230
+        ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
       });
 
       // Draw score and shield status
@@ -298,14 +297,6 @@
         dino.y = 230;
         dino.vy = 0;
         dino.jumping = false;
-      }
-
-      if (dino.crouching) {
-        dino.height = 20;
-        dino.y = 240;
-      } else {
-        dino.height = 40;
-        dino.y = Math.min(dino.y, 230);
       }
 
       // Update run animation
@@ -355,9 +346,9 @@
       for (let obstacle of obstacles) {
         const dinoHitbox = {
           x: dino.x + 5,
-          y: dino.y + (dino.crouching ? 10 : 0),
+          y: dino.y + 5,
           width: dino.width - 10,
-          height: dino.height - (dino.crouching ? 10 : 0),
+          height: dino.height - 10,
         };
         const obstacleHitbox = {
           x: obstacle.x + 5,
@@ -402,16 +393,10 @@
     }
 
     function jump() {
-      if (!dino.jumping && !dino.crouching && dino.jumpCooldown <= 0) {
+      if (!dino.jumping && dino.jumpCooldown <= 0) {
         dino.vy = -12;
         dino.jumping = true;
         dino.jumpCooldown = 15;
-      }
-    }
-
-    function crouch(state) {
-      if (!dino.jumping) {
-        dino.crouching = state;
       }
     }
 
@@ -426,21 +411,11 @@
 
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") jump();
-      if (e.code === "ArrowDown") crouch(true);
-    });
-
-    window.addEventListener("keyup", (e) => {
-      if (e.code === "ArrowDown") crouch(false);
     });
 
     document.getElementById("touch-btn").addEventListener("touchstart", (e) => {
       e.preventDefault();
-      if (!dino.crouching) jump();
-      crouch(true);
-    });
-
-    document.getElementById("touch-btn").addEventListener("touchend", () => {
-      crouch(false);
+      jump();
     });
 
     function saveScore(newScore, name) {
@@ -481,7 +456,6 @@
       dino.y = 230;
       dino.vy = 0;
       dino.jumping = false;
-      dino.crouching = false;
       dino.jumpCooldown = 0;
       lastObstacleSpawn = 0;
       document.getElementById("game-over").classList.remove("show");
