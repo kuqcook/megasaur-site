@@ -108,7 +108,7 @@
     const ctx = canvas.getContext("2d");
 
     const dino = {
-      x: canvas.width - 100,
+      x: canvas.width + 100,
       y: 140,
       vy: 0,
       width: 40,
@@ -118,7 +118,7 @@
 
     const gravity = 2;
     let obstacle = {
-      x: canvas.width + 100,
+      x: canvas.width - 100,
       y: 150,
       width: 40,
       height: 40,
