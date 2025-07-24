@@ -27,7 +27,7 @@
       justify-content: center;
       align-items: flex-start;
       flex-wrap: wrap;
-      max-width: 1200px;
+      max-width: 1400px;
       width: 100%;
     }
 
@@ -93,7 +93,7 @@
   <h1>🦖 MEGASaur Runner</h1>
 
   <div class="container">
-    <canvas id="game" width="800" height="200"></canvas>
+    <canvas id="game" width="1200" height="200"></canvas>
 
     <div id="leaderboard">
       <h2>🏆 Top 10 Dino Tamers</h2>
@@ -108,7 +108,7 @@
     const ctx = canvas.getContext("2d");
 
     const dino = {
-      x: 50,
+      x: canvas.width - 100,
       y: 140,
       vy: 0,
       width: 40,
@@ -118,7 +118,7 @@
 
     const gravity = 2;
     let obstacle = {
-      x: 800,
+      x: 0,
       y: 150,
       width: 40,
       height: 40,
@@ -130,14 +130,16 @@
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // draw dino (emoji)
+      // draw flipped dino (facing left)
       ctx.font = "32px serif";
-      ctx.fillText("🦖", dino.x, dino.y);
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.fillText("🦖", -dino.x, dino.y);
+      ctx.restore();
 
-      // draw shrine (emoji)
+      // draw obstacle
       ctx.fillText("⛩️", obstacle.x, obstacle.y);
 
-      // score
       ctx.fillStyle = "#fff";
       ctx.font = "16px monospace";
       ctx.fillText("Score: " + score, 10, 20);
@@ -155,13 +157,13 @@
         dino.jumping = false;
       }
 
-      obstacle.x -= 6;
-      if (obstacle.x < -40) {
-        obstacle.x = 800 + Math.random() * 200;
+      obstacle.x += 6;
+      if (obstacle.x > canvas.width + 40) {
+        obstacle.x = 0 - Math.random() * 300;
         score++;
       }
 
-      // collision detection
+      // Collision Detection
       if (
         dino.x < obstacle.x + obstacle.width &&
         dino.x + dino.width > obstacle.x &&
