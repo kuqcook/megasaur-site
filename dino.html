@@ -211,7 +211,7 @@
     }
 
     function spawnPowerUp() {
-      if (powerUps.length < 1 && Math.random() < 0.005) {
+      if (powerUps.length < 1 && Math.random() < 0.001) { // Reduced probability
         const type = powerUpTypes[0];
         powerUps.push({
           x: canvas.width + 100 + Math.random() * 300,
@@ -264,13 +264,9 @@
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.fillStyle = "white";
-        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y + obstacle.height);
-        if (obstacle.type === "gate") {
-          ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-          ctx.fillRect(obstacle.x, 230, obstacle.width, 5); // Shadow only for gates
-        }
+        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y); // Aligned base at y = 230
 
-        // Debug collision boxes (optional)
+        // Debug collision boxes
         ctx.strokeStyle = "red";
         ctx.strokeRect(obstacle.x + 5, obstacle.y + 5, obstacle.width - 10, obstacle.height - 10);
         ctx.strokeStyle = "blue";
@@ -283,7 +279,7 @@
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.fillStyle = "yellow";
-        ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y + powerUp.height);
+        ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y); // Aligned base at y = 230
       });
 
       // Draw score and shield status
