@@ -265,12 +265,6 @@
         ctx.textBaseline = "bottom";
         ctx.fillStyle = "white";
         ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y); // Aligned base at y = 230
-
-        // Debug collision boxes
-        ctx.strokeStyle = "red";
-        ctx.strokeRect(obstacle.x + 5, obstacle.y + 5, obstacle.width - 10, obstacle.height - 10);
-        ctx.strokeStyle = "blue";
-        ctx.strokeRect(dino.x + 5, dino.y + (dino.crouching ? 10 : 0), dino.width - 10, dino.height - (dino.crouching ? 10 : 0));
       });
 
       // Draw power-ups
