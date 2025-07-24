@@ -108,7 +108,7 @@
     const ctx = canvas.getContext("2d");
 
     const dino = {
-      x: canvas.width + 100,
+      x: canvas.width 0,
       y: 140,
       vy: 0,
       width: 40,
@@ -157,9 +157,9 @@
         dino.jumping = false;
       }
 
-      obstacle.x += 6;
-      if (obstacle.x > canvas.width + 40) {
-        obstacle.x = 0 - Math.random() * 300;
+      obstacle.x -= 6;
+      if (obstacle.x < - 40) {
+        obstacle.x = canvas.width + Math.random() * 300;
         score++;
       }
 
