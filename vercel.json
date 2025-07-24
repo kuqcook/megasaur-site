@@ -1,0 +1,12 @@
+json
+
+
+
+{
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/dino.html"
+    }
+  ]
+}
