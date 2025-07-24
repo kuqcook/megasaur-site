@@ -160,6 +160,556 @@
 
   <button id="touch-btn">TAP TO JUMP</button>
 
-  <script type="module" src="game.js"></script>
+  <script type="module">
+    // Import Firebase modular SDK
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+
+    // Initialize Firebase
+    let database;
+    try {
+      const firebaseConfig = {
+        apiKey: "AIzaSyACFWv9js50STTex2TzTjEubBP_3heZXgc",
+        authDomain: "megasaur-runner.firebaseapp.com",
+        databaseURL: "https://megasaur-runner-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "megasaur-runner",
+        storageBucket: "megasaur-runner.firebasestorage.app",
+        messagingSenderId: "222910326781",
+        appId: "1:222910326781:web:b92195977fda4af2661b94"
+      };
+      const app = initializeApp(firebaseConfig);
+      database = getDatabase(app);
+      console.log("Firebase initialized successfully");
+    } catch (error) {
+      console.error("Firebase initialization error:", error.message, error.stack);
+      document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
+    }
+
+    let canvas, ctx, dino, gravity, obstacles, powerUps, score, gameSpeed, gameOver, nickname, hasShield, lastFrameTime, lastObstacleSpawn, animationFrameId, backgroundObjects;
+
+    function initializeGame() {
+      console.log("Initializing game...");
+      canvas = document.getElementById("game");
+      if (!canvas) {
+        console.error("Canvas element not found");
+        return false;
+      }
+      ctx = canvas.getContext("2d");
+      if (!ctx) {
+        console.error("Canvas context not available");
+        return false;
+      }
+
+      // Resize canvas
+      function resizeCanvas() {
+        const maxWidth = window.innerWidth > 768 ? 1400 : window.innerWidth - 40;
+        canvas.width = maxWidth;
+        canvas.height = maxWidth / (1400 / 250);
+        console.log("Canvas resized:", canvas.width, canvas.height);
+      }
+      window.addEventListener("resize", resizeCanvas);
+      resizeCanvas();
+
+      // Initialize game state
+      dino = {
+        x: 50,
+        y: canvas.height - 20,
+        vy: 0,
+        width: 40,
+        height: 40,
+        jumping: false,
+        jumpCooldown: 0,
+        frame: 0,
+      };
+      gravity = 0.5;
+      obstacles = [];
+      powerUps = [];
+      score = 0;
+      gameSpeed = 6;
+      gameOver = false;
+      nickname = "";
+      hasShield = false;
+      lastFrameTime = performance.now();
+      lastObstacleSpawn = 0;
+      backgroundObjects = [
+        { x: canvas.width, y: 50, emoji: "🌙", size: 30 },
+        { x: canvas.width + 300, y: 80, emoji: "⭐", size: 20 },
+        { x: canvas.width + 600, y: 60, emoji: "⭐", size: 25 },
+        { x: canvas.width + 900, y: 70, emoji: "🌙", size: 35 },
+      ];
+
+      console.log("Game initialized successfully");
+      return true;
+    }
+
+    const obstacleTypes = [
+      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
+      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
+    ];
+
+    const powerUpTypes = [
+      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 },
+    ];
+
+    function spawnObstacle(timestamp) {
+      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
+        const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+        obstacles.push({
+          x: canvas.width + 100 + Math.random() * 300,
+          y: type.y,
+          width: type.width,
+          height: type.height,
+          type: type.type,
+          emoji: type.emoji,
+        });
+        lastObstacleSpawn = timestamp;
+        console.log("Spawned obstacle:", type.type);
+      }
+    }
+
+    function spawnPowerUp() {
+      if (powerUps.length < 1 && Math.random() < 0.005) {
+        const type = powerUpTypes[0];
+        powerUps.push({
+          x: canvas.width + 100 + Math.random() * 300,
+          y: type.y,
+          width: type.width,
+          height: type.height,
+          type: type.type,
+          emoji: type.emoji,
+        });
+        console.log("Spawned power-up:", type.type);
+      }
+    }
+
+    function draw() {
+      if (!ctx || !canvas) {
+        console.error("Cannot draw: Canvas or context not available");
+        return;
+      }
+      try {
+        console.log("Drawing frame...");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw background (moons and stars)
+        ctx.font = "30px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        backgroundObjects.forEach((obj) => {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+          ctx.font = `${obj.size}px serif`;
+          ctx.fillText(obj.emoji, obj.x, obj.y);
+        });
+
+        // Draw ground with emoji
+        ctx.font = "20px serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "bottom";
+        for (let x = 0; x < canvas.width; x += 15) {
+          ctx.fillStyle = "#8B4513";
+          ctx.fillText("🟫", x, canvas.height - 5);
+        }
+
+        // Draw dino
+        ctx.save();
+        ctx.translate(dino.x + dino.width / 2, dino.y);
+        ctx.scale(-1, 1);
+        ctx.font = "32px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
+        ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
+        ctx.fillText(dinoEmoji, 0, 0);
+        ctx.restore();
+
+        // Draw obstacles
+        obstacles.forEach((obstacle) => {
+          ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "bottom";
+          ctx.fillStyle = "white";
+          ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
+        });
+
+        // Draw power-ups
+        powerUps.forEach((powerUp) => {
+          ctx.font = "30px serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "bottom";
+          ctx.fillStyle = "yellow";
+          ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
+        });
+
+        // Draw score, shield status, and nickname
+        ctx.fillStyle = "#00f0ff";
+        ctx.font = "20px monospace";
+        ctx.fillText(`Score: ${score}`, 10, 30);
+        if (hasShield) {
+          ctx.fillText("🛡️ Shield Active!", 10, 60);
+        }
+        ctx.fillText(`Player: ${nickname || "Anonymous"}`, 10, 90);
+      } catch (error) {
+        console.error("Error in draw function:", error.message, error.stack);
+      }
+    }
+
+    function update(deltaTime, timestamp) {
+      if (gameOver) return;
+
+      const dt = deltaTime / 16.67;
+
+      // Update dino
+      dino.y += dino.vy * dt;
+      dino.vy += gravity * dt;
+
+      if (dino.y > canvas.height - 20) {
+        dino.y = canvas.height - 20;
+        dino.vy = 0;
+        dino.jumping = false;
+      }
+
+      // Update run animation
+      dino.frame += dt;
+      if (dino.frame > 20) dino.frame = 0;
+
+      // Update background objects
+      backgroundObjects.forEach((obj) => {
+        obj.x -= 0.5 * dt;
+        if (obj.x < -obj.size) {
+          obj.x = canvas.width + obj.size;
+        }
+      });
+
+      // Update obstacles
+      obstacles.forEach((obstacle, index) => {
+        obstacle.x -= gameSpeed * dt;
+        if (obstacle.x < -obstacle.width) {
+          obstacles.splice(index, 1);
+          score++;
+        }
+      });
+
+      // Update power-ups
+      powerUps.forEach((powerUp, index) => {
+        powerUp.x -= gameSpeed * dt;
+        if (powerUp.x < -powerUp.width) {
+          powerUps.splice(index, 1);
+        }
+      });
+
+      // Spawn new obstacles
+      spawnObstacle(timestamp);
+
+      // Spawn power-ups
+      spawnPowerUp();
+
+      // Increase game speed
+      gameSpeed = 6 + score / 300;
+
+      // Update jump cooldown
+      if (dino.jumpCooldown > 0) {
+        dino.jumpCooldown -= dt;
+      }
+
+      // Collision detection
+      for (let obstacle of obstacles) {
+        const dinoHitbox = {
+          x: dino.x + 5,
+          y: dino.y + 5,
+          width: dino.width - 10,
+          height: dino.height - 10,
+        };
+        const obstacleHitbox = {
+          x: obstacle.x + 5,
+          y: obstacle.y + 5,
+          width: obstacle.width - 10,
+          height: obstacle.height - 10,
+        };
+
+        if (
+          dinoHitbox.x < obstacleHitbox.x + obstacleHitbox.width &&
+          dinoHitbox.x + dinoHitbox.width > obstacleHitbox.x &&
+          dinoHitbox.y < obstacleHitbox.y + obstacleHitbox.height &&
+          dinoHitbox.y + dinoHitbox.height > obstacleHitbox.y
+        ) {
+          if (hasShield) {
+            hasShield = false;
+            obstacles.splice(obstacles.indexOf(obstacle), 1);
+            console.log("Shield used, obstacle removed");
+          } else {
+            gameOver = true;
+            saveScore(score, nickname);
+            document.getElementById("final-score").textContent = `Final Score: ${score}`;
+            document.getElementById("game-over").classList.add("show");
+            document.getElementById("touch-btn").style.display = "none";
+            console.log("Game over triggered");
+          }
+        }
+      }
+
+      // Power-up collision
+      for (let powerUp of powerUps) {
+        if (
+          dino.x < powerUp.x + powerUp.width &&
+          dino.x + dino.width > powerUp.x &&
+          dino.y < powerUp.y + powerUp.height &&
+          dino.y + dino.height > powerUp.y
+        ) {
+          if (powerUp.type === "shield") {
+            hasShield = true;
+            powerUps.splice(powerUps.indexOf(powerUp), 1);
+            console.log("Shield power-up collected");
+          }
+        }
+      }
+    }
+
+    function jump() {
+      if (!dino.jumping && dino.jumpCooldown <= 0) {
+        dino.vy = -12;
+        dino.jumping = true;
+        dino.jumpCooldown = 15;
+        console.log("Jump triggered");
+      }
+    }
+
+    function loop(timestamp) {
+      if (!canvas || !ctx) {
+        console.error("Loop aborted: Canvas or context not available");
+        return;
+      }
+      try {
+        console.log("Game loop running, timestamp:", timestamp);
+        const deltaTime = timestamp - lastFrameTime;
+        lastFrameTime = timestamp;
+
+        update(deltaTime, timestamp);
+        draw();
+        if (!gameOver) {
+          animationFrameId = requestAnimationFrame(loop);
+        }
+      } catch (error) {
+        console.error("Error in game loop:", error.message, error.stack);
+      }
+    }
+
+    function saveScore(newScore, name) {
+      if (!database) {
+        console.error("Database not initialized, cannot save score.");
+        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
+        return;
+      }
+      console.log("Saving score to Firebase:", name, newScore);
+      const scoreRef = ref(database, "scores");
+      push(scoreRef, {
+        name: name || "Anonymous",
+        score: newScore,
+        timestamp: Date.now()
+      }).then(() => {
+        console.log("Score saved successfully:", name, newScore);
+      }).catch((error) => {
+        console.error("Error saving score:", error.message, error.stack);
+        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
+      });
+    }
+
+    function showLeaderboard() {
+      const list = document.getElementById("scores");
+      if (!list) {
+        console.error("Leaderboard element not found");
+        return;
+      }
+      if (!database) {
+        console.error("Database not initialized, cannot show leaderboard.");
+        list.innerHTML = "<li>Leaderboard unavailable. Playing offline.</li>";
+        return;
+      }
+      try {
+        console.log("Fetching leaderboard...");
+        const scoreRef = query(ref(database, "scores"), orderByChild("score"), limitToLast(10));
+        onValue(scoreRef, (snapshot) => {
+          console.log("Leaderboard data received");
+          list.innerHTML = "";
+          const scores = [];
+          snapshot.forEach((child) => {
+            scores.push(child.val());
+          });
+          if (scores.length === 0) {
+            list.innerHTML = "<li>No scores yet.</li>";
+            return;
+          }
+          scores.reverse().forEach((entry, i) => {
+            const li = document.createElement("li");
+            li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
+            list.appendChild(li);
+          });
+        }, (error) => {
+          console.error("Error updating leaderboard:", error.message, error.stack);
+          list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
+        });
+      } catch (error) {
+        console.error("Error in showLeaderboard:", error.message, error.stack);
+        list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
+      }
+    }
+
+    function startGame() {
+      try {
+        console.log("startGame called");
+        const input = document.getElementById("nickname");
+        if (!input) {
+          console.error("Nickname input not found");
+          return;
+        }
+        const inputValue = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
+        nickname = inputValue || "Anonymous";
+        console.log("Nickname set to:", nickname);
+        localStorage.setItem("dinoNickname", nickname);
+        const form = document.getElementById("nickname-form");
+        if (form) {
+          form.style.display = "none";
+        } else {
+          console.error("Nickname form not found");
+        }
+
+        // Initialize game state
+        if (!initializeGame()) {
+          console.error("Failed to initialize game");
+          return;
+        }
+
+        // Start game loop with slight delay to ensure DOM is ready
+        console.log("Scheduling game loop...");
+        setTimeout(() => {
+          if (canvas && ctx) {
+            console.log("Starting game loop");
+            animationFrameId = requestAnimationFrame(loop);
+          } else {
+            console.error("Cannot start game: Canvas or context not available");
+          }
+        }, 100);
+
+        // Load leaderboard asynchronously
+        console.log("Scheduling leaderboard...");
+        setTimeout(() => {
+          showLeaderboard();
+        }, 0);
+      } catch (error) {
+        console.error("Error in startGame:", error.message, error.stack);
+      }
+    }
+
+    function restartGame() {
+      try {
+        console.log("restartGame called");
+        score = 0;
+        gameSpeed = 6;
+        gameOver = false;
+        obstacles = [];
+        powerUps = [];
+        hasShield = false;
+        dino.y = canvas.height - 20;
+        dino.vy = 0;
+        dino.jumping = false;
+        dino.jumpCooldown = 0;
+        lastObstacleSpawn = 0;
+        const gameOverDiv = document.getElementById("game-over");
+        if (gameOverDiv) {
+          gameOverDiv.classList.remove("show");
+        } else {
+          console.error("Game over div not found");
+        }
+        const touchBtn = document.getElementById("touch-btn");
+        if (touchBtn) {
+          touchBtn.style.display = "block";
+        } else {
+          console.error("Touch button not found");
+        }
+        if (canvas && ctx) {
+          console.log("Starting game loop in restart");
+          animationFrameId = requestAnimationFrame(loop);
+        } else {
+          console.error("Cannot restart game: Canvas or context not available");
+        }
+      } catch (error) {
+        console.error("Error in restartGame:", error.message, error.stack);
+      }
+    }
+
+    // Add event listeners
+    window.addEventListener("load", () => {
+      try {
+        console.log("Window loaded");
+        // Add event listener for start game button
+        const startButton = document.getElementById("start-game-btn");
+        if (startButton) {
+          startButton.addEventListener("click", startGame);
+          console.log("Start game button listener added");
+        } else {
+          console.error("Start game button not found");
+        }
+
+        // Add event listener for restart game button
+        const restartButton = document.getElementById("restart-game-btn");
+        if (restartButton) {
+          restartButton.addEventListener("click", restartGame);
+          console.log("Restart game button listener added");
+        } else {
+          console.error("Restart game button not found");
+        }
+
+        // Add event listener for jump
+        window.addEventListener("keydown", (e) => {
+          if (e.code === "Space") {
+            e.preventDefault();
+            jump();
+          }
+        });
+
+        const touchBtn = document.getElementById("touch-btn");
+        if (touchBtn) {
+          touchBtn.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            jump();
+          });
+          console.log("Touch button listener added");
+        } else {
+          console.error("Touch button not found");
+        }
+
+        // Always show nickname form on load
+        const form = document.getElementById("nickname-form");
+        if (form) {
+          form.style.display = "flex";
+          const savedName = localStorage.getItem("dinoNickname");
+          const input = document.getElementById("nickname");
+          if (savedName && input) {
+            input.value = savedName;
+            console.log("Loaded saved nickname:", savedName);
+          }
+          console.log("Nickname form displayed");
+        } else {
+          console.error("Nickname form not found");
+          if (initializeGame()) {
+            nickname = "Anonymous";
+            console.log("No form found, starting game with nickname:", nickname);
+            setTimeout(() => {
+              showLeaderboard();
+              if (canvas && ctx) {
+                console.log("Starting game loop on load");
+                animationFrameId = requestAnimationFrame(loop);
+              } else {
+                console.error("Cannot start game on load: Canvas or context not available");
+              }
+            }, 100);
+          } else {
+            console.error("Failed to initialize game on load");
+          }
+        }
+      } catch (error) {
+        console.error("Error in window.onload:", error.message, error.stack);
+      }
+    });
+  </script>
 </body>
 </html>
