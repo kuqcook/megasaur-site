@@ -227,7 +227,7 @@
       score = 0;
       gameSpeed = 6;
       gameOver = false;
-      nickname = "";
+      nickname = nickname || "";
       hasShield = false;
       lastFrameTime = performance.now();
       lastObstacleSpawn = 0;
@@ -499,14 +499,14 @@
         document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
         return;
       }
-      console.log("Saving score to Firebase:", name, newScore);
+      console.log("Saving score to Firebase:", { name, score: newScore });
       const scoreRef = ref(database, "scores");
       push(scoreRef, {
         name: name || "Anonymous",
         score: newScore,
         timestamp: Date.now()
       }).then(() => {
-        console.log("Score saved successfully:", name, newScore);
+        console.log("Score saved successfully:", { name, score: newScore });
       }).catch((error) => {
         console.error("Error saving score:", error.message, error.stack);
         document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
@@ -559,15 +559,19 @@
         const input = document.getElementById("nickname");
         if (!input) {
           console.error("Nickname input not found");
-          return;
+          nickname = "Anonymous";
+          console.log("No input found, using nickname:", nickname);
+        } else {
+          const inputValue = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
+          nickname = inputValue || "Anonymous";
+          console.log("Nickname input value:", inputValue, "Set nickname to:", nickname);
+          localStorage.setItem("dinoNickname", nickname);
         }
-        const inputValue = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
-        nickname = inputValue || "Anonymous";
-        console.log("Nickname set to:", nickname);
-        localStorage.setItem("dinoNickname", nickname);
+
         const form = document.getElementById("nickname-form");
         if (form) {
           form.style.display = "none";
+          console.log("Nickname form hidden");
         } else {
           console.error("Nickname form not found");
         }
@@ -578,7 +582,7 @@
           return;
         }
 
-        // Start game loop with slight delay to ensure DOM is ready
+        // Start game loop with delay to ensure DOM is ready
         console.log("Scheduling game loop...");
         setTimeout(() => {
           if (canvas && ctx) {
@@ -643,7 +647,10 @@
         // Add event listener for start game button
         const startButton = document.getElementById("start-game-btn");
         if (startButton) {
-          startButton.addEventListener("click", startGame);
+          startButton.addEventListener("click", () => {
+            console.log("Start game button clicked");
+            startGame();
+          });
           console.log("Start game button listener added");
         } else {
           console.error("Start game button not found");
@@ -652,7 +659,10 @@
         // Add event listener for restart game button
         const restartButton = document.getElementById("restart-game-btn");
         if (restartButton) {
-          restartButton.addEventListener("click", restartGame);
+          restartButton.addEventListener("click", () => {
+            console.log("Restart game button clicked");
+            restartGame();
+          });
           console.log("Restart game button listener added");
         } else {
           console.error("Restart game button not found");
@@ -677,26 +687,27 @@
           console.error("Touch button not found");
         }
 
-        // Always show nickname form on load
+        // Always show nickname form on load and prefill with saved nickname
         const form = document.getElementById("nickname-form");
         if (form) {
           form.style.display = "flex";
-          const savedName = localStorage.getItem("dinoNickname");
           const input = document.getElementById("nickname");
+          const savedName = localStorage.getItem("dinoNickname");
           if (savedName && input) {
             input.value = savedName;
-            console.log("Loaded saved nickname:", savedName);
+            console.log("Loaded saved nickname into input:", savedName);
+          } else {
+            console.log("No saved nickname or input not found");
           }
           console.log("Nickname form displayed");
         } else {
-          console.error("Nickname form not found");
+          console.error("Nickname form not found, starting with Anonymous");
+          nickname = "Anonymous";
           if (initializeGame()) {
-            nickname = "Anonymous";
-            console.log("No form found, starting game with nickname:", nickname);
             setTimeout(() => {
               showLeaderboard();
               if (canvas && ctx) {
-                console.log("Starting game loop on load");
+                console.log("Starting game loop on load with Anonymous");
                 animationFrameId = requestAnimationFrame(loop);
               } else {
                 console.error("Cannot start game on load: Canvas or context not available");
