@@ -6,138 +6,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
+      font-family: sans-serif;
+      text-align: center;
       margin: 0;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      overflow: hidden;
+      padding: 0;
+      background: #eaf6f6;
     }
-
-    h1 {
-      margin-top: 20px;
-      font-size: 2rem;
-      text-shadow: 2px 2px #00f0ff;
-    }
-
-    .container {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      max-width: 1600px;
-      width: 100%;
-    }
-
     canvas {
-      background: rgba(0, 0, 0, 0.5);
-      border: 4px solid #00f0ff;
-      border-radius: 16px;
-      margin: 20px;
-      flex-grow: 1;
-      image-rendering: pixelated;
+      background: #fff;
+      display: block;
+      margin: 20px auto;
+      border: 2px solid #000;
     }
-
-    #leaderboard {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      padding: 16px;
-      margin: 20px;
-      width: 260px;
-      box-shadow: 0 0 10px #00f0ff;
-    }
-
-    #leaderboard h2 {
-      margin-bottom: 10px;
-      font-size: 1.3rem;
-    }
-
-    ol#scores {
-      padding-left: 20px;
-    }
-
-    ol#scores li {
-      font-size: 1rem;
-      color: #00f0ff;
-    }
-
-    #touch-btn {
-      display: none;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      padding: 1rem;
-      font-size: 1.5rem;
-      font-weight: bold;
-      background: #00f0ff;
-      color: #000;
-      border: none;
-      border-top: 2px solid #fff;
-      z-index: 10;
-    }
-
-    @media (pointer: coarse) {
-      #touch-btn {
-        display: block !important;
-      }
-    }
-
     #nickname-form, #game-over {
-      display: none;
-      flex-direction: column;
-      align-items: center;
       margin-top: 20px;
-      transition: opacity 0.5s ease-in-out;
     }
-
-    #nickname-form input, #game-over button {
-      padding: 8px;
-      font-size: 1rem;
-      margin-top: 8px;
-    }
-
-    #nickname-form button, #game-over button {
-      padding: 8px 16px;
-      margin-top: 8px;
-      font-size: 1rem;
-      background: #00f0ff;
-      color: black;
-      border: none;
-      cursor: pointer;
-    }
-
     #nickname-error {
       color: red;
-      font-size: 0.9rem;
-      margin-top: 8px;
       display: none;
     }
-
-    #game-over.show {
+    .container {
       display: flex;
-      opacity: 1;
+      justify-content: center;
+      align-items: flex-start;
     }
-
-    #game-over {
-      opacity: 0;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 20px;
-      border-radius: 10px;
+    #leaderboard {
+      margin-left: 20px;
+      text-align: left;
     }
-
-    @media (max-width: 768px) {
-      .container {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      canvas {
-        width: 100% !important;
-      }
+    #touch-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      padding: 10px 20px;
+      display: none;
     }
   </style>
 </head>
@@ -148,7 +52,7 @@
     <label for="nickname">Enter your nickname:</label>
     <input type="text" id="nickname" placeholder="e.g. DinoMaster" maxlength="20" />
     <p id="nickname-error">Nickname already taken, please choose another.</p>
-    <button id="start-game-btn">Start Game</button>
+    <button id="start-game-btn" onclick="startGame()">Start Game</button>
   </div>
 
   <div id="game-over">
@@ -158,8 +62,7 @@
   </div>
 
   <div class="container">
-    <canvas id="game"></canvas>
-
+    <canvas id="game" width="600" height="300"></canvas>
     <div id="leaderboard">
       <h2>🏆 Top 10 Dino Tamers</h2>
       <ol id="scores"></ol>
@@ -169,601 +72,224 @@
   <button id="touch-btn">TAP TO JUMP</button>
 
   <script type="module">
-    console.log("Script loaded successfully");
-
-    // Import Firebase modular SDK
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
     import { getDatabase, ref, push, onValue, query, orderByChild, get } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
 
-    // Initialize Firebase
-    let database;
-    try {
-      const firebaseConfig = {
-        apiKey: "AIzaSyACFWv9js50STTex2TzTjEubBP_3heZXgc",
-        authDomain: "megasaur-runner.firebaseapp.com",
-        databaseURL: "https://megasaur-runner-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "megasaur-runner",
-        storageBucket: "megasaur-runner.firebasestorage.app",
-        messagingSenderId: "222910326781",
-        appId: "1:222910326781:web:b92195977fda4af2661b94"
-      };
-      const app = initializeApp(firebaseConfig);
-      database = getDatabase(app);
-      console.log("Firebase initialized successfully");
-    } catch (error) {
-      console.error("Firebase initialization error:", error.message, error.stack);
-      document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
-    }
+    const firebaseConfig = {
+      apiKey: "AIzaSyACFWv9js50STTex2TzTjEubBP_3heZXgc",
+      authDomain: "megasaur-runner.firebaseapp.com",
+      databaseURL: "https://megasaur-runner-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "megasaur-runner",
+      storageBucket: "megasaur-runner.appspot.com",
+      messagingSenderId: "222910326781",
+      appId: "1:222910326781:web:b92195977fda4af2661b94"
+    };
 
-    let canvas, ctx, dino, gravity, obstacles, powerUps, score, gameSpeed, gameOver, nickname, hasShield, lastFrameTime, lastObstacleSpawn, animationFrameId, backgroundObjects;
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
 
-    function initializeGame() {
-      console.log("Initializing game...");
-      canvas = document.getElementById("game");
-      if (!canvas) {
-        console.error("Canvas element not found");
-        return false;
-      }
-      ctx = canvas.getContext("2d");
-      if (!ctx) {
-        console.error("Canvas context not available");
-        return false;
-      }
-
-      // Resize canvas with minimum size
-      function resizeCanvas() {
-        const maxWidth = Math.max(300, window.innerWidth > 768 ? 1400 : window.innerWidth - 40);
-        canvas.width = maxWidth;
-        canvas.height = maxWidth / (1400 / 250);
-        console.log("Canvas resized:", canvas.width, canvas.height);
-      }
-      window.addEventListener("resize", resizeCanvas);
-      resizeCanvas();
-
-      // Test rendering
-      ctx.fillStyle = "red";
-      ctx.fillRect(10, 10, 50, 50);
-
-      // Initialize game state
-      dino = {
-        x: 50,
-        y: canvas.height - 20,
-        vy: 0,
-        width: 40,
-        height: 40,
-        jumping: false,
-        jumpCooldown: 0,
-        frame: 0,
-      };
-      gravity = 0.5;
-      obstacles = [];
-      powerUps = [];
-      score = 0;
-      gameSpeed = 6;
-      gameOver = false;
-      nickname = "";
-      hasShield = false;
-      lastFrameTime = performance.now();
-      lastObstacleSpawn = 0;
-      backgroundObjects = [
-        { x: canvas.width, y: 50, emoji: "🌙", size: 30 },
-        { x: canvas.width + 300, y: 80, emoji: "⭐", size: 20 },
-        { x: canvas.width + 600, y: 60, emoji: "⭐", size: 25 },
-        { x: canvas.width + 900, y: 70, emoji: "🌙", size: 35 },
-      ];
-
-      console.log("Game initialized successfully:", { canvas: !!canvas, ctx: !!ctx });
-      return true;
-    }
+    let canvas = document.getElementById("game");
+    let ctx = canvas.getContext("2d");
+    let dino = { x: 50, y: 230, width: 30, height: 30, vy: 0, jumpPower: 10, grounded: true };
+    let gravity = 0.5;
+    let obstacles = [];
+    let powerUps = [];
+    let backgroundObjects = [];
+    let score = 0;
+    let gameSpeed = 3;
+    let gameOver = false;
+    let nickname = "";
+    let hasShield = false;
+    let lastFrameTime = 0;
+    let lastObstacleSpawn = 0;
+    let animationFrameId = null;
 
     const obstacleTypes = [
       { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
-      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
+      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 }
     ];
-
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 },
+      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 }
     ];
 
-    function spawnObstacle(timestamp) {
-      console.log("Spawn check:", { obstacles: obstacles.length, timeSinceLast: timestamp - lastObstacleSpawn });
-      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
-        const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-        obstacles.push({
-          x: canvas.width + 100 + Math.random() * 300,
-          y: type.y,
-          width: type.width,
-          height: type.height,
-          type: type.type,
-          emoji: type.emoji,
-        });
-        lastObstacleSpawn = timestamp;
-        console.log("Spawned obstacle:", type.type);
-      }
-    }
-
-    function spawnPowerUp() {
-      if (powerUps.length < 1 && Math.random() < 0.005) {
-        const type = powerUpTypes[0];
-        powerUps.push({
-          x: canvas.width + 100 + Math.random() * 300,
-          y: type.y,
-          width: type.width,
-          height: type.height,
-          type: type.type,
-          emoji: type.emoji,
-        });
-        console.log("Spawned power-up:", type.type);
-      }
+    function initializeGame() {
+      obstacles = [];
+      powerUps = [];
+      backgroundObjects = [];
+      score = 0;
+      gameSpeed = 3;
+      gameOver = false;
+      hasShield = false;
+      dino.y = 230;
+      dino.vy = 0;
+      dino.grounded = true;
+      document.getElementById("game-over").style.display = "none";
+      document.getElementById("touch-btn").style.display = "block";
+      return true;
     }
 
     function draw() {
-      if (!ctx || !canvas) {
-        console.error("Cannot draw: Canvas or context not available");
-        return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = hasShield ? "#66f" : "#000";
+      ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+
+      for (let obs of obstacles) {
+        ctx.fillText(obs.emoji, obs.x, obs.y);
       }
-      try {
-        console.log("Drawing frame...");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw background (moons and stars)
-        ctx.font = "30px 'Segoe UI Emoji', serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        backgroundObjects.forEach((obj) => {
-          ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-          ctx.font = `${obj.size}px 'Segoe UI Emoji', serif`;
-          ctx.fillText(obj.emoji, obj.x, obj.y);
-        });
-
-        // Draw ground with emoji
-        ctx.font = "20px 'Segoe UI Emoji', serif";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "bottom";
-        for (let x = 0; x < canvas.width; x += 15) {
-          ctx.fillStyle = "#8B4513";
-          ctx.fillText("🟫", x, canvas.height - 5);
-        }
-
-        // Draw dino
-        ctx.save();
-        ctx.translate(dino.x + dino.width / 2, dino.y);
-        ctx.scale(-1, 1);
-        ctx.font = "32px 'Segoe UI Emoji', serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
-        ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
-        ctx.fillText(dinoEmoji, 0, 0);
-        ctx.restore();
-
-        // Draw obstacles
-        obstacles.forEach((obstacle) => {
-          ctx.font = obstacle.type === "pterodactyl" ? "30px 'Segoe UI Emoji', serif" : "40px 'Segoe UI Emoji', serif";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "bottom";
-          ctx.fillStyle = "white";
-          ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
-        });
-
-        // Draw power-ups
-        powerUps.forEach((powerUp) => {
-          ctx.font = "30px 'Segoe UI Emoji', serif";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "bottom";
-          ctx.fillStyle = "yellow";
-          ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
-        });
-
-        // Draw hitboxes for debugging
-        ctx.strokeStyle = "red";
-        ctx.strokeRect(dino.x + 5, dino.y + 5, dino.width - 10, dino.height - 10);
-        obstacles.forEach((obstacle) => {
-          ctx.strokeRect(obstacle.x + 5, obstacle.y + 5, obstacle.width - 10, obstacle.height - 10);
-        });
-
-        // Draw score and shield status
-        ctx.fillStyle = "#00f0ff";
-        ctx.font = "20px monospace";
-        ctx.fillText(`Score: ${score}`, 10, 30);
-        if (hasShield) {
-          ctx.fillText("🛡️ Shield Active!", 10, 60);
-        }
-      } catch (error) {
-        console.error("Error in draw function:", error.message, error.stack);
+      for (let p of powerUps) {
+        ctx.fillText(p.emoji, p.x, p.y);
       }
+      ctx.fillStyle = "#000";
+      ctx.fillText("Score: " + score, 10, 20);
     }
 
-    function update(deltaTime, timestamp) {
-      if (gameOver) return;
-
-      const dt = deltaTime / 16.67;
-
-      // Update dino
-      dino.y += dino.vy * dt;
-      dino.vy += gravity * dt;
-
-      if (dino.y > canvas.height - 20) {
-        dino.y = canvas.height - 20;
+    function update() {
+      dino.vy += gravity;
+      dino.y += dino.vy;
+      if (dino.y >= 230) {
+        dino.y = 230;
         dino.vy = 0;
-        dino.jumping = false;
+        dino.grounded = true;
       }
-
-      // Update run animation
-      dino.frame += dt;
-      if (dino.frame > 20) dino.frame = 0;
-
-      // Update background objects
-      backgroundObjects.forEach((obj) => {
-        obj.x -= 0.5 * dt;
-        if (obj.x < -obj.size) {
-          obj.x = canvas.width + obj.size;
-        }
-      });
-
-      // Update obstacles
-      obstacles.forEach((obstacle, index) => {
-        obstacle.x -= gameSpeed * dt;
-        if (obstacle.x < -obstacle.width) {
-          obstacles.splice(index, 1);
-          score++;
-        }
-      });
-
-      // Update power-ups
-      powerUps.forEach((powerUp, index) => {
-        powerUp.x -= gameSpeed * dt;
-        if (powerUp.x < -powerUp.width) {
-          powerUps.splice(index, 1);
-        }
-      });
-
-      // Spawn new obstacles
-      spawnObstacle(timestamp);
-
-      // Spawn power-ups
-      spawnPowerUp();
-
-      // Increase game speed
-      gameSpeed = 6 + score / 300;
-
-      // Update jump cooldown
-      if (dino.jumpCooldown > 0) {
-        dino.jumpCooldown -= dt;
-      }
-
-      // Collision detection
-      for (let obstacle of obstacles) {
-        const dinoHitbox = {
-          x: dino.x + 5,
-          y: dino.y + 5,
-          width: dino.width - 10,
-          height: dino.height - 10,
-        };
-        const obstacleHitbox = {
-          x: obstacle.x + 5,
-          y: obstacle.y + 5,
-          width: obstacle.width - 10,
-          height: obstacle.height - 10,
-        };
-        console.log("Collision check:", { dinoHitbox, obstacleHitbox });
+      for (let obs of obstacles) {
+        obs.x -= gameSpeed;
         if (
-          dinoHitbox.x < obstacleHitbox.x + obstacleHitbox.width &&
-          dinoHitbox.x + dinoHitbox.width > obstacleHitbox.x &&
-          dinoHitbox.y < obstacleHitbox.y + obstacleHitbox.height &&
-          dinoHitbox.y + dinoHitbox.height > obstacleHitbox.y
+          dino.x < obs.x + obs.width &&
+          dino.x + dino.width > obs.x &&
+          dino.y < obs.y + obs.height &&
+          dino.y + dino.height > obs.y
         ) {
-          console.log("Collision detected!");
           if (hasShield) {
             hasShield = false;
-            obstacles.splice(obstacles.indexOf(obstacle), 1);
+            obstacles.splice(obstacles.indexOf(obs), 1);
           } else {
-            gameOver = true;
-            saveScore(score, nickname);
-            document.getElementById("final-score").textContent = `Final Score: ${score}`;
-            document.getElementById("game-over").classList.add("show");
-            document.getElementById("touch-btn").style.display = "none";
-            console.log("Game over triggered");
+            endGame();
           }
         }
       }
-
-      // Power-up collision
-      for (let powerUp of powerUps) {
+      for (let p of powerUps) {
+        p.x -= gameSpeed;
         if (
-          dino.x < powerUp.x + powerUp.width &&
-          dino.x + dino.width > powerUp.x &&
-          dino.y < powerUp.y + powerUp.height &&
-          dino.y + dino.height > powerUp.y
+          dino.x < p.x + p.width &&
+          dino.x + dino.width > p.x &&
+          dino.y < p.y + p.height &&
+          dino.y + dino.height > p.y
         ) {
-          if (powerUp.type === "shield") {
-            hasShield = true;
-            powerUps.splice(powerUps.indexOf(powerUp), 1);
-            console.log("Shield power-up collected");
-          }
+          if (p.type === "shield") hasShield = true;
+          powerUps.splice(powerUps.indexOf(p), 1);
         }
       }
-    }
-
-    function jump() {
-      console.log("Jump attempt:", { jumping: dino.jumping, cooldown: dino.jumpCooldown });
-      if (!dino.jumping && dino.jumpCooldown <= 0) {
-        dino.vy = -12;
-        dino.jumping = true;
-        dino.jumpCooldown = 15;
-        console.log("Jump triggered");
-      }
+      score++;
     }
 
     function loop(timestamp) {
-      if (!canvas || !ctx) {
-        console.error("Loop aborted: Canvas or context not available");
-        return;
-      }
-      try {
-        console.log("Frame:", animationFrameId, "Timestamp:", timestamp);
-        const deltaTime = Math.min(timestamp - lastFrameTime, 50);
-        lastFrameTime = timestamp;
+      update();
+      draw();
+      animationFrameId = requestAnimationFrame(loop);
+    }
 
-        update(deltaTime, timestamp);
-        draw();
-        if (!gameOver) {
-          animationFrameId = requestAnimationFrame(loop);
-        }
-      } catch (error) {
-        console.error("Error in game loop:", error.message, error.stack);
+    function jump() {
+      if (dino.grounded) {
+        dino.vy = -dino.jumpPower;
+        dino.grounded = false;
       }
     }
 
-    function saveScore(newScore, name) {
-      if (!database) {
-        console.error("Database not initialized, cannot save score.");
-        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
-        return;
-      }
-      const scoreRef = ref(database, "scores");
-      push(scoreRef, {
-        name: name || "Anonymous",
-        score: newScore,
-        timestamp: Date.now()
-      }).then(() => {
-        console.log("Score saved successfully");
-      }).catch((error) => {
-        console.error("Error saving score:", error.message, error.stack);
-        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
-      });
+    function endGame() {
+      gameOver = true;
+      cancelAnimationFrame(animationFrameId);
+      document.getElementById("final-score").textContent = `${nickname}'s Score: ${score}`;
+      document.getElementById("game-over").style.display = "block";
+      document.getElementById("touch-btn").style.display = "none";
+      saveScore(nickname, score);
     }
 
-    async function checkNicknameUnique(nickname) {
-      if (!database) {
-        console.error("Database not initialized, cannot check nickname.");
-        return false;
-      }
-      try {
-        const scoreRef = ref(database, "scores");
-        const snapshot = await get(scoreRef);
-        let nicknameExists = false;
-        snapshot.forEach((child) => {
-          if (child.val().name === nickname) {
-            nicknameExists = true;
-          }
-        });
-        return !nicknameExists;
-      } catch (error) {
-        console.error("Error checking nickname:", error.message, error.stack);
-        return false;
-      }
+    function spawnObstacle() {
+      const o = { ...obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)] };
+      o.x = canvas.width;
+      obstacles.push(o);
+    }
+
+    function spawnPowerUp() {
+      const p = { ...powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)] };
+      p.x = canvas.width;
+      powerUps.push(p);
+    }
+
+    function saveScore(name, score) {
+      const scoresRef = ref(database, 'scores');
+      push(scoresRef, { name, score });
+    }
+
+    async function checkNicknameUnique(name) {
+      const scoresRef = ref(database, 'scores');
+      const snapshot = await get(scoresRef);
+      if (!snapshot.exists()) return true;
+      const scores = snapshot.val();
+      return !Object.values(scores).some(entry => entry.name === name);
     }
 
     function showLeaderboard() {
-      const list = document.getElementById("scores");
-      if (!list) {
-        console.error("Leaderboard element not found");
-        return;
-      }
-      if (!database) {
-        console.error("Database not initialized, cannot show leaderboard.");
-        list.innerHTML = "<li>Leaderboard unavailable. Playing offline.</li>";
-        return;
-      }
-      try {
-        console.log("Fetching leaderboard...");
-        const scoreRef = query(ref(database, "scores"), orderByChild("score"));
-        onValue(scoreRef, (snapshot) => {
-          console.log("Leaderboard data received");
-          list.innerHTML = "";
-          const scoresByNickname = {};
-          snapshot.forEach((child) => {
-            const entry = child.val();
-            if (!scoresByNickname[entry.name] || scoresByNickname[entry.name].score < entry.score) {
-              scoresByNickname[entry.name] = { name: entry.name, score: entry.score };
-            }
-          });
-          const scores = Object.values(scoresByNickname)
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 10);
-          if (scores.length === 0) {
-            list.innerHTML = "<li>No scores yet.</li>";
-            return;
-          }
-          scores.forEach((entry, i) => {
-            const li = document.createElement("li");
-            li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
-            list.appendChild(li);
-          });
-        }, (error) => {
-          console.error("Error updating leaderboard:", error.message, error.stack);
-          list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
+      const scoresRef = query(ref(database, 'scores'), orderByChild('score'));
+      onValue(scoresRef, snapshot => {
+        const list = document.getElementById("scores");
+        list.innerHTML = "";
+        const items = [];
+        snapshot.forEach(child => {
+          items.push(child.val());
         });
-      } catch (error) {
-        console.error("Error in showLeaderboard:", error.message, error.stack);
-        list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
-      }
+        items.sort((a, b) => b.score - a.score);
+        for (let i = 0; i < Math.min(10, items.length); i++) {
+          const li = document.createElement("li");
+          li.textContent = `${items[i].name}: ${items[i].score}`;
+          list.appendChild(li);
+        }
+      });
     }
 
     async function startGame() {
-      try {
-        console.log("startGame called");
-        const input = document.getElementById("nickname");
-        const errorText = document.getElementById("nickname-error");
-        if (!input || !errorText) {
-          console.error("Nickname input or error text not found");
-          return;
-        }
-        const proposedNickname = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
-        if (!proposedNickname) {
-          errorText.textContent = "Please enter a nickname.";
-          errorText.style.display = "block";
-          return;
-        }
-        const isUnique = await checkNicknameUnique(proposedNickname);
-        if (!isUnique) {
-          errorText.textContent = "Nickname already taken, please choose another.";
-          errorText.style.display = "block";
-          return;
-        }
-        errorText.style.display = "none";
-        nickname = proposedNickname;
-        const form = document.getElementById("nickname-form");
-        if (form) {
-          form.style.display = "none";
-        } else {
-          console.error("Nickname form not found");
-        }
+      const input = document.getElementById("nickname");
+      const errorText = document.getElementById("nickname-error");
+      const form = document.getElementById("nickname-form");
 
-        // Initialize game state
-        if (!initializeGame()) {
-          console.error("Failed to initialize game");
-          return;
-        }
-
-        // Start game loop with slight delay to ensure DOM is ready
-        console.log("Scheduling game loop...");
-        setTimeout(() => {
-          if (canvas && ctx) {
-            console.log("Starting game loop");
-            animationFrameId = requestAnimationFrame(loop);
-          } else {
-            console.error("Cannot start game: Canvas or context not available");
-          }
-        }, 100);
-
-        // Load leaderboard asynchronously
-        console.log("Scheduling leaderboard...");
-        setTimeout(() => {
-          showLeaderboard();
-        }, 0);
-      } catch (error) {
-        console.error("Error in startGame:", error.message, error.stack);
+      const proposedNickname = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
+      if (!proposedNickname) {
+        errorText.textContent = "Please enter a nickname.";
+        errorText.style.display = "block";
+        return;
       }
+      const isUnique = await checkNicknameUnique(proposedNickname);
+      if (!isUnique) {
+        errorText.textContent = "Nickname already taken, please choose another.";
+        errorText.style.display = "block";
+        return;
+      }
+      errorText.style.display = "none";
+      nickname = proposedNickname;
+      form.style.display = "none";
+
+      if (!initializeGame()) return;
+
+      setInterval(() => {
+        if (!gameOver) spawnObstacle();
+      }, 2000);
+
+      setInterval(() => {
+        if (!gameOver && Math.random() < 0.3) spawnPowerUp();
+      }, 5000);
+
+      animationFrameId = requestAnimationFrame(loop);
+      showLeaderboard();
     }
 
-    function restartGame() {
-      try {
-        console.log("restartGame called");
-        score = 0;
-        gameSpeed = 6;
-        gameOver = false;
-        obstacles = [];
-        powerUps = [];
-        hasShield = false;
-        dino.y = canvas.height - 20;
-        dino.vy = 0;
-        dino.jumping = false;
-        dino.jumpCooldown = 0;
-        lastObstacleSpawn = 0;
-        lastFrameTime = performance.now();
-        const gameOverDiv = document.getElementById("game-over");
-        if (gameOverDiv) {
-          gameOverDiv.classList.remove("show");
-        } else {
-          console.error("Game over div not found");
-        }
-        const form = document.getElementById("nickname-form");
-        if (form) {
-          form.style.display = "flex";
-        } else {
-          console.error("Nickname form not found");
-        }
-        const touchBtn = document.getElementById("touch-btn");
-        if (touchBtn) {
-          touchBtn.style.display = "block";
-        } else {
-          console.error("Touch button not found");
-        }
-      } catch (error) {
-        console.error("Error in restartGame:", error.message, error.stack);
-      }
-    }
+    window.startGame = startGame;
 
-    // Add event listener for start button immediately
-    function setupStartButton() {
-      const startButton = document.getElementById("start-game-btn");
-      if (startButton) {
-        startButton.addEventListener("click", () => {
-          console.log("Start button clicked");
-          startGame();
-        });
-        console.log("Start game button listener added");
-      } else {
-        console.error("Start game button not found, retrying...");
-        setTimeout(setupStartButton, 1000); // Retry after 1s
-      }
-    }
-    setupStartButton();
-
-    // Add event listeners on load
-    window.addEventListener("load", () => {
-      try {
-        console.log("Window loaded, elements:", {
-          startBtn: !!document.getElementById("start-game-btn"),
-          restartBtn: !!document.getElementById("restart-game-btn"),
-          touchBtn: !!document.getElementById("touch-btn"),
-          canvas: !!document.getElementById("game")
-        });
-
-        // Add event listener for restart game button
-        const restartButton = document.getElementById("restart-game-btn");
-        if (restartButton) {
-          restartButton.addEventListener("click", () => {
-            console.log("Restart button clicked");
-            restartGame();
-          });
-          console.log("Restart game button listener added");
-        } else {
-          console.error("Restart game button not found");
-        }
-
-        // Add event listener for jump
-        window.addEventListener("keydown", (e) => {
-          console.log("Key pressed:", e.code);
-          if (e.code === "Space") {
-            e.preventDefault();
-            jump();
-          }
-        });
-
-        const touchBtn = document.getElementById("touch-btn");
-        if (touchBtn) {
-          touchBtn.addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            console.log("Touch button pressed");
-            jump();
-          });
-          console.log("Touch button listener added");
-        } else {
-          console.error("Touch button not found");
-        }
-
-        // Always show nickname form
-        const form = document.getElementById("nickname-form");
-        if (form) {
-          form.style.display = "flex";
-          console.log("Nickname form displayed");
-        }
-      } catch (error) {
-        console.error("Error in window.onload:", error.message, error.stack);
-      }
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("restart-game-btn").addEventListener("click", startGame);
+      document.addEventListener("keydown", e => {
+        if (e.code === "Space") jump();
+      });
+      document.getElementById("touch-btn").addEventListener("click", jump);
     });
   </script>
 </body>
