@@ -144,4 +144,78 @@
     }
 
     function update() {
-      if (g
+      if (gameOver) return;
+
+      dino.y += dino.vy;
+      dino.vy += gravity;
+
+      if (dino.y > 140) {
+        dino.y = 140;
+        dino.vy = 0;
+        dino.jumping = false;
+      }
+
+      obstacle.x -= 6;
+      if (obstacle.x < -40) {
+        obstacle.x = 800 + Math.random() * 200;
+        score++;
+      }
+
+      // collision detection
+      if (
+        dino.x < obstacle.x + obstacle.width &&
+        dino.x + dino.width > obstacle.x &&
+        dino.y < obstacle.y &&
+        dino.y + dino.height > obstacle.y - 40
+      ) {
+        gameOver = true;
+        saveScore(score);
+        setTimeout(() => {
+          alert("🦖 Game Over! Final Score: " + score);
+          document.location.reload();
+        }, 300);
+      }
+    }
+
+    function jump() {
+      if (!dino.jumping) {
+        dino.vy = -25;
+        dino.jumping = true;
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") jump();
+    });
+
+    document.getElementById("touch-btn").addEventListener("click", jump);
+
+    function saveScore(newScore) {
+      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
+      scores.push(newScore);
+      scores = scores.sort((a, b) => b - a).slice(0, 10);
+      localStorage.setItem("megasaurScores", JSON.stringify(scores));
+    }
+
+    function showLeaderboard() {
+      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
+      const list = document.getElementById("scores");
+      list.innerHTML = "";
+      scores.forEach((s, i) => {
+        const li = document.createElement("li");
+        li.textContent = `#${i + 1}: ${s}`;
+        list.appendChild(li);
+      });
+    }
+
+    showLeaderboard();
+    loop();
+  </script>
+</body>
+</html>
