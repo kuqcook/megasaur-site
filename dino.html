@@ -140,13 +140,13 @@
   <div id="nickname-form">
     <label for="nickname">Enter your nickname:</label>
     <input type="text" id="nickname" placeholder="e.g. DinoMaster" maxlength="20" />
-    <button onclick="startGame()">Start Game</button>
+    <button id="start-game-btn">Start Game</button>
   </div>
 
   <div id="game-over">
     <h2>Game Over!</h2>
     <p id="final-score"></p>
-    <button onclick="restartGame()">Play Again</button>
+    <button id="restart-game-btn">Play Again</button>
   </div>
 
   <div class="container">
@@ -488,18 +488,6 @@
       }
     }
 
-    window.addEventListener("keydown", (e) => {
-      if (e.code === "Space") {
-        e.preventDefault();
-        jump();
-      }
-    });
-
-    document.getElementById("touch-btn").addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      jump();
-    });
-
     function saveScore(newScore, name) {
       if (!database) {
         console.error("Database not initialized, cannot save score.");
@@ -641,10 +629,48 @@
       }
     }
 
-    // Initialize game on load if nickname exists
+    // Add event listeners
     window.addEventListener("load", () => {
       try {
         console.log("Window loaded");
+        // Add event listener for start game button
+        const startButton = document.getElementById("start-game-btn");
+        if (startButton) {
+          startButton.addEventListener("click", startGame);
+          console.log("Start game button listener added");
+        } else {
+          console.error("Start game button not found");
+        }
+
+        // Add event listener for restart game button
+        const restartButton = document.getElementById("restart-game-btn");
+        if (restartButton) {
+          restartButton.addEventListener("click", restartGame);
+          console.log("Restart game button listener added");
+        } else {
+          console.error("Restart game button not found");
+        }
+
+        // Add event listener for jump
+        window.addEventListener("keydown", (e) => {
+          if (e.code === "Space") {
+            e.preventDefault();
+            jump();
+          }
+        });
+
+        const touchBtn = document.getElementById("touch-btn");
+        if (touchBtn) {
+          touchBtn.addEventListener("touchstart", (e) => {
+            e.preventDefault();
+            jump();
+          });
+          console.log("Touch button listener added");
+        } else {
+          console.error("Touch button not found");
+        }
+
+        // Check for saved nickname
         const savedName = localStorage.getItem("dinoNickname");
         if (savedName) {
           nickname = savedName;
