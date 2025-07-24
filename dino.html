@@ -255,7 +255,7 @@
     }
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
+      { type: "gate", emoji: ⛩️", width: 40, height: 40, y: 230 },
       { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
     ];
 
@@ -694,7 +694,23 @@
       }
     }
 
-    // Add event listeners
+    // Add event listener for start button immediately
+    function setupStartButton() {
+      const startButton = document.getElementById("start-game-btn");
+      if (startButton) {
+        startButton.addEventListener("click", () => {
+          console.log("Start button clicked");
+          startGame();
+        });
+        console.log("Start game button listener added");
+      } else {
+        console.error("Start game button not found, retrying...");
+        setTimeout(setupStartButton, 1000); // Retry after 1s
+      }
+    }
+    setupStartButton();
+
+    // Add event listeners on load
     window.addEventListener("load", () => {
       try {
         console.log("Window loaded, elements:", {
@@ -703,18 +719,6 @@
           touchBtn: !!document.getElementById("touch-btn"),
           canvas: !!document.getElementById("game")
         });
-
-        // Add event listener for start game button
-        const startButton = document.getElementById("start-game-btn");
-        if (startButton) {
-          startButton.addEventListener("click", () => {
-            console.log("Start button clicked");
-            startGame();
-          });
-          console.log("Start game button listener added");
-        } else {
-          console.error("Start game button not found");
-        }
 
         // Add event listener for restart game button
         const restartButton = document.getElementById("restart-game-btn");
@@ -759,9 +763,6 @@
         console.error("Error in window.onload:", error.message, error.stack);
       }
     });
-
-    // Expose startGame globally as a fallback
-    window.startGame = startGame;
   </script>
 </body>
 </html>
