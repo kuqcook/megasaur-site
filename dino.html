@@ -110,6 +110,13 @@
       cursor: pointer;
     }
 
+    #nickname-error {
+      color: red;
+      font-size: 0.9rem;
+      margin-top: 8px;
+      display: none;
+    }
+
     #game-over.show {
       display: flex;
       opacity: 1;
@@ -140,6 +147,7 @@
   <div id="nickname-form">
     <label for="nickname">Enter your nickname:</label>
     <input type="text" id="nickname" placeholder="e.g. DinoMaster" maxlength="20" />
+    <p id="nickname-error">Nickname already taken, please choose another.</p>
     <button id="start-game-btn">Start Game</button>
   </div>
 
@@ -163,7 +171,7 @@
   <script type="module">
     // Import Firebase modular SDK
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast, get } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
 
     // Initialize Firebase
     let database;
@@ -524,6 +532,27 @@
       });
     }
 
+    async function checkNicknameUnique(nickname) {
+      if (!database) {
+        console.error("Database not initialized, cannot check nickname.");
+        return false;
+      }
+      try {
+        const scoreRef = ref(database, "scores");
+        const snapshot = await get(scoreRef);
+        let nicknameExists = false;
+        snapshot.forEach((child) => {
+          if (child.val().name === nickname) {
+            nicknameExists = true;
+          }
+        });
+        return !nicknameExists;
+      } catch (error) {
+        console.error("Error checking nickname:", error.message, error.stack);
+        return false;
+      }
+    }
+
     function showLeaderboard() {
       const list = document.getElementById("scores");
       if (!list) {
@@ -537,19 +566,25 @@
       }
       try {
         console.log("Fetching leaderboard...");
-        const scoreRef = query(ref(database, "scores"), orderByChild("score"), limitToLast(10));
+        const scoreRef = query(ref(database, "scores"), orderByChild("score"));
         onValue(scoreRef, (snapshot) => {
           console.log("Leaderboard data received");
           list.innerHTML = "";
-          const scores = [];
+          const scoresByNickname = {};
           snapshot.forEach((child) => {
-            scores.push(child.val());
+            const entry = child.val();
+            if (!scoresByNickname[entry.name] || scoresByNickname[entry.name].score < entry.score) {
+              scoresByNickname[entry.name] = { name: entry.name, score: entry.score };
+            }
           });
+          const scores = Object.values(scoresByNickname)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10);
           if (scores.length === 0) {
             list.innerHTML = "<li>No scores yet.</li>";
             return;
           }
-          scores.reverse().forEach((entry, i) => {
+          scores.forEach((entry, i) => {
             const li = document.createElement("li");
             li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
             list.appendChild(li);
@@ -564,17 +599,29 @@
       }
     }
 
-    function startGame() {
+    async function startGame() {
       try {
         console.log("startGame called");
         const input = document.getElementById("nickname");
-        if (!input) {
-          console.error("Nickname input not found");
+        const errorText = document.getElementById("nickname-error");
+        if (!input || !errorText) {
+          console.error("Nickname input or error text not found");
           return;
         }
-        nickname = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
-        nickname = nickname || "Anonymous";
-        localStorage.setItem("dinoNickname", nickname);
+        const proposedNickname = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
+        if (!proposedNickname) {
+          errorText.textContent = "Please enter a nickname.";
+          errorText.style.display = "block";
+          return;
+        }
+        const isUnique = await checkNicknameUnique(proposedNickname);
+        if (!isUnique) {
+          errorText.textContent = "Nickname already taken, please choose another.";
+          errorText.style.display = "block";
+          return;
+        }
+        errorText.style.display = "none";
+        nickname = proposedNickname;
         const form = document.getElementById("nickname-form");
         if (form) {
           form.style.display = "none";
@@ -630,17 +677,17 @@
         } else {
           console.error("Game over div not found");
         }
+        const form = document.getElementById("nickname-form");
+        if (form) {
+          form.style.display = "flex";
+        } else {
+          console.error("Nickname form not found");
+        }
         const touchBtn = document.getElementById("touch-btn");
         if (touchBtn) {
           touchBtn.style.display = "block";
         } else {
           console.error("Touch button not found");
-        }
-        if (canvas && ctx) {
-          console.log("Starting game loop in restart");
-          animationFrameId = requestAnimationFrame(loop);
-        } else {
-          console.error("Cannot restart game: Canvas or context not available");
         }
       } catch (error) {
         console.error("Error in restartGame:", error.message, error.stack);
@@ -702,33 +749,11 @@
           console.error("Touch button not found");
         }
 
-        // Check for saved nickname
-        const savedName = localStorage.getItem("dinoNickname");
-        if (savedName) {
-          nickname = savedName;
-          const form = document.getElementById("nickname-form");
-          if (form) {
-            form.style.display = "none";
-          }
-          if (initializeGame()) {
-            setTimeout(() => {
-              showLeaderboard();
-              if (canvas && ctx) {
-                console.log("Starting game loop on load");
-                animationFrameId = requestAnimationFrame(loop);
-              } else {
-                console.error("Cannot start game on load: Canvas or context not available");
-              }
-            }, 100);
-          } else {
-            console.error("Failed to initialize game on load");
-          }
-        } else {
-          const form = document.getElementById("nickname-form");
-          if (form) {
-            form.style.display = "flex";
-            console.log("Nickname form displayed");
-          }
+        // Always show nickname form
+        const form = document.getElementById("nickname-form");
+        if (form) {
+          form.style.display = "flex";
+          console.log("Nickname form displayed");
         }
       } catch (error) {
         console.error("Error in window.onload:", error.message, error.stack);
