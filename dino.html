@@ -171,7 +171,7 @@
   <script type="module">
     // Import Firebase modular SDK
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast, get } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+    import { getDatabase, ref, push, onValue, query, orderByChild, get } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
 
     // Initialize Firebase
     let database;
@@ -759,6 +759,9 @@
         console.error("Error in window.onload:", error.message, error.stack);
       }
     });
+
+    // Expose startGame globally as a fallback
+    window.startGame = startGame;
   </script>
 </body>
 </html>
