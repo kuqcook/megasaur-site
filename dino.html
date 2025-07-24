@@ -1,33 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>MEGASaur Runner</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       margin: 0;
       background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: white;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      height: 100vh;
-      overflow: hidden;
-      color: #ffffff;
     }
+
     h1 {
       margin-top: 20px;
       font-size: 2rem;
       text-shadow: 2px 2px #00f0ff;
     }
+
+    .container {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      max-width: 1200px;
+      width: 100%;
+    }
+
     canvas {
-      background: rgba(0,0,0,0.5);
+      background: rgba(0, 0, 0, 0.5);
       border: 4px solid #00f0ff;
       border-radius: 16px;
-      margin-top: 10px;
+      margin: 20px;
+      flex-grow: 1;
     }
+
+    #leaderboard {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 16px;
+      margin: 20px;
+      width: 260px;
+      box-shadow: 0 0 10px #00f0ff;
+    }
+
+    #leaderboard h2 {
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+
+    ol#scores {
+      padding-left: 20px;
+    }
+
+    ol#scores li {
+      font-size: 1rem;
+      color: #00f0ff;
+    }
+
     #touch-btn {
       position: fixed;
       bottom: 0;
@@ -42,133 +76,72 @@
       border-top: 2px solid #fff;
       z-index: 10;
     }
-    #leaderboard {
-      margin-top: 10px;
-      padding: 10px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 10px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 0 10px #00f0ff;
-    }
-    #leaderboard h2 {
-      margin-bottom: 0.5rem;
-    }
-    ol#scores {
-      padding-left: 20px;
-    }
-    ol#scores li {
-      margin: 2px 0;
-      font-size: 1rem;
-      color: #00f0ff;
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      canvas {
+        width: 100% !important;
+      }
     }
   </style>
 </head>
 <body>
   <h1>🦖 MEGASaur Runner</h1>
-  <canvas id="game" width="600" height="150"></canvas>
-  <button id="touch-btn">TAP TO JUMP</button>
-  <div id="leaderboard">
-    <h2>🏆 Top 10 Dino Tamers</h2>
-    <ol id="scores"></ol>
+
+  <div class="container">
+    <canvas id="game" width="800" height="200"></canvas>
+
+    <div id="leaderboard">
+      <h2>🏆 Top 10 Dino Tamers</h2>
+      <ol id="scores"></ol>
+    </div>
   </div>
+
+  <button id="touch-btn">TAP TO JUMP</button>
 
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
 
-    const dinoImg = new Image();
-    dinoImg.src = "https://i.imgur.com/Dq7qJkH.png"; // transparent MEGASaur sprite
+    const dino = {
+      x: 50,
+      y: 140,
+      vy: 0,
+      width: 40,
+      height: 40,
+      jumping: false,
+    };
 
-    let dino = { x: 50, y: 100, vy: 0, width: 48, height: 48, jumping: false };
-    let gravity = 2;
-    let cactus = { x: 600, y: 110, width: 20, height: 40 };
+    const gravity = 2;
+    let obstacle = {
+      x: 800,
+      y: 150,
+      width: 40,
+      height: 40,
+    };
+
     let score = 0;
     let gameOver = false;
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(dinoImg, dino.x, dino.y, dino.width, dino.height);
-      ctx.fillStyle = "#ff2e63";
-      ctx.fillRect(cactus.x, cactus.y, cactus.width, cactus.height);
-      ctx.fillStyle = "#ffffff";
+
+      // draw dino (emoji)
+      ctx.font = "32px serif";
+      ctx.fillText("🦖", dino.x, dino.y);
+
+      // draw shrine (emoji)
+      ctx.fillText("⛩️", obstacle.x, obstacle.y);
+
+      // score
+      ctx.fillStyle = "#fff";
       ctx.font = "16px monospace";
       ctx.fillText("Score: " + score, 10, 20);
     }
 
     function update() {
-      if (gameOver) return;
-      dino.y += dino.vy;
-      dino.vy += gravity;
-
-      if (dino.y > 100) {
-        dino.y = 100;
-        dino.vy = 0;
-        dino.jumping = false;
-      }
-
-      cactus.x -= 6;
-      if (cactus.x < -20) {
-        cactus.x = 600 + Math.random() * 300;
-        score++;
-      }
-
-      if (
-        dino.x < cactus.x + cactus.width &&
-        dino.x + dino.width > cactus.x &&
-        dino.y < cactus.y + cactus.height &&
-        dino.y + dino.height > cactus.y
-      ) {
-        gameOver = true;
-        saveScore(score);
-        setTimeout(() => {
-          alert("🦖 Game Over! Final Score: " + score);
-          document.location.reload();
-        }, 200);
-      }
-    }
-
-    function loop() {
-      update();
-      draw();
-      requestAnimationFrame(loop);
-    }
-
-    function jump() {
-      if (!dino.jumping) {
-        dino.vy = -24;
-        dino.jumping = true;
-      }
-    }
-
-    window.addEventListener("keydown", (e) => {
-      if (e.code === "Space") jump();
-    });
-
-    document.getElementById("touch-btn").addEventListener("click", jump);
-
-    function saveScore(newScore) {
-      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
-      scores.push(newScore);
-      scores = scores.sort((a, b) => b - a).slice(0, 10);
-      localStorage.setItem("megasaurScores", JSON.stringify(scores));
-    }
-
-    function showLeaderboard() {
-      let scores = JSON.parse(localStorage.getItem("megasaurScores")) || [];
-      const list = document.getElementById("scores");
-      list.innerHTML = "";
-      scores.forEach((s, i) => {
-        const li = document.createElement("li");
-        li.textContent = `#${i + 1}: ${s}`;
-        list.appendChild(li);
-      });
-    }
-
-    dinoImg.onload = () => {
-      loop();
-      showLeaderboard();
-    };
-  </script>
-</body>
-</html>
+      if (g
