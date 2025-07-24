@@ -185,11 +185,18 @@
       document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
     }
 
+    // Initialize canvas
     const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
+    let ctx;
+    if (canvas) {
+      ctx = canvas.getContext("2d");
+    } else {
+      console.error("Canvas element not found");
+    }
 
     // Resize canvas dynamically
     function resizeCanvas() {
+      if (!canvas) return;
       const maxWidth = window.innerWidth > 768 ? 1400 : window.innerWidth - 40;
       canvas.width = maxWidth;
       canvas.height = maxWidth / (1400 / 250);
@@ -219,12 +226,12 @@
     let lastFrameTime = performance.now();
     let lastObstacleSpawn = 0;
     let animationFrameId;
-    let backgroundObjects = [
+    let backgroundObjects = canvas ? [
       { x: canvas.width, y: 50, emoji: "🌙", size: 30 },
       { x: canvas.width + 300, y: 80, emoji: "⭐", size: 20 },
       { x: canvas.width + 600, y: 60, emoji: "⭐", size: 25 },
       { x: canvas.width + 900, y: 70, emoji: "🌙", size: 35 },
-    ];
+    ] : [];
 
     const obstacleTypes = [
       { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
@@ -239,7 +246,7 @@
       if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
         obstacles.push({
-          x: canvas.width + 100 + Math.random() * 300,
+          x: canvas ? canvas.width + 100 + Math.random() * 300 : 100 + Math.random() * 300,
           y: type.y,
           width: type.width,
           height: type.height,
@@ -254,7 +261,7 @@
       if (powerUps.length < 1 && Math.random() < 0.005) {
         const type = powerUpTypes[0];
         powerUps.push({
-          x: canvas.width + 100 + Math.random() * 300,
+          x: canvas ? canvas.width + 100 + Math.random() * 300 : 100 + Math.random() * 300,
           y: type.y,
           width: type.width,
           height: type.height,
@@ -265,63 +272,71 @@
     }
 
     function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw background (moons and stars)
-      ctx.font = "30px serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      backgroundObjects.forEach((obj) => {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-        ctx.font = `${obj.size}px serif`;
-        ctx.fillText(obj.emoji, obj.x, obj.y);
-      });
-
-      // Draw ground with emoji
-      ctx.font = "20px serif";
-      ctx.textAlign = "left";
-      ctx.textBaseline = "bottom";
-      for (let x = 0; x < canvas.width; x += 15) {
-        ctx.fillStyle = "#8B4513";
-        ctx.fillText("🟫", x, canvas.height - 5);
+      if (!ctx || !canvas) {
+        console.error("Cannot draw: Canvas or context not available");
+        return;
       }
+      try {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw dino
-      ctx.save();
-      ctx.translate(dino.x + dino.width / 2, dino.y);
-      ctx.scale(-1, 1);
-      ctx.font = "32px serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
-      ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
-      ctx.fillText(dinoEmoji, 0, 0);
-      ctx.restore();
-
-      // Draw obstacles
-      obstacles.forEach((obstacle) => {
-        ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "bottom";
-        ctx.fillStyle = "white";
-        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
-      });
-
-      // Draw power-ups
-      powerUps.forEach((powerUp) => {
+        // Draw background (moons and stars)
         ctx.font = "30px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        backgroundObjects.forEach((obj) => {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+          ctx.font = `${obj.size}px serif`;
+          ctx.fillText(obj.emoji, obj.x, obj.y);
+        });
+
+        // Draw ground with emoji
+        ctx.font = "20px serif";
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
-        ctx.fillStyle = "yellow";
-        ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
-      });
+        for (let x = 0; x < canvas.width; x += 15) {
+          ctx.fillStyle = "#8B4513";
+          ctx.fillText("🟫", x, canvas.height - 5);
+        }
 
-      // Draw score and shield status
-      ctx.fillStyle = "#00f0ff";
-      ctx.font = "20px monospace";
-      ctx.fillText(`Score: ${score}`, 10, 30);
-      if (hasShield) {
-        ctx.fillText("🛡️ Shield Active!", 10, 60);
+        // Draw dino
+        ctx.save();
+        ctx.translate(dino.x + dino.width / 2, dino.y);
+        ctx.scale(-1, 1);
+        ctx.font = "32px serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
+        ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
+        ctx.fillText(dinoEmoji, 0, 0);
+        ctx.restore();
+
+        // Draw obstacles
+        obstacles.forEach((obstacle) => {
+          ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "bottom";
+          ctx.fillStyle = "white";
+          ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
+        });
+
+        // Draw power-ups
+        powerUps.forEach((powerUp) => {
+          ctx.font = "30px serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "bottom";
+          ctx.fillStyle = "yellow";
+          ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
+        });
+
+        // Draw score and shield status
+        ctx.fillStyle = "#00f0ff";
+        ctx.font = "20px monospace";
+        ctx.fillText(`Score: ${score}`, 10, 30);
+        if (hasShield) {
+          ctx.fillText("🛡️ Shield Active!", 10, 60);
+        }
+      } catch (error) {
+        console.error("Error in draw function:", error);
       }
     }
 
@@ -334,7 +349,7 @@
       dino.y += dino.vy * dt;
       dino.vy += gravity * dt;
 
-      if (dino.y > canvas.height - 20) {
+      if (canvas && dino.y > canvas.height - 20) {
         dino.y = canvas.height - 20;
         dino.vy = 0;
         dino.jumping = false;
@@ -347,7 +362,7 @@
       // Update background objects
       backgroundObjects.forEach((obj) => {
         obj.x -= 0.5 * dt;
-        if (obj.x < -obj.size) {
+        if (canvas && obj.x < -obj.size) {
           obj.x = canvas.width + obj.size;
         }
       });
@@ -355,7 +370,7 @@
       // Update obstacles
       obstacles.forEach((obstacle, index) => {
         obstacle.x -= gameSpeed * dt;
-        if (obstacle.x < -obstacle.width) {
+        if (canvas && obstacle.x < -obstacle.width) {
           obstacles.splice(index, 1);
           score++;
         }
@@ -364,7 +379,7 @@
       // Update power-ups
       powerUps.forEach((powerUp, index) => {
         powerUp.x -= gameSpeed * dt;
-        if (powerUp.x < -powerUp.width) {
+        if (canvas && powerUp.x < -powerUp.width) {
           powerUps.splice(index, 1);
         }
       });
@@ -442,13 +457,22 @@
     }
 
     function loop(timestamp) {
-      const deltaTime = timestamp - lastFrameTime;
-      lastFrameTime = timestamp;
+      if (!canvas || !ctx) {
+        console.error("Loop aborted: Canvas or context not available");
+        return;
+      }
+      try {
+        console.log("Game loop running");
+        const deltaTime = timestamp - lastFrameTime;
+        lastFrameTime = timestamp;
 
-      update(deltaTime, timestamp);
-      draw();
-      if (!gameOver) {
-        animationFrameId = requestAnimationFrame(loop);
+        update(deltaTime, timestamp);
+        draw();
+        if (!gameOver) {
+          animationFrameId = requestAnimationFrame(loop);
+        }
+      } catch (error) {
+        console.error("Error in game loop:", error);
       }
     }
 
@@ -475,6 +499,8 @@
         name: name || "Anonymous",
         score: newScore,
         timestamp: Date.now()
+      }).then(() => {
+        console.log("Score saved successfully");
       }).catch((error) => {
         console.error("Error saving score:", error);
         document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
@@ -484,67 +510,132 @@
     function showLeaderboard() {
       const list = document.getElementById("scores");
       if (!database) {
+        console.error("Database not initialized, cannot show leaderboard.");
         list.innerHTML = "<li>Leaderboard unavailable. Playing offline.</li>";
         return;
       }
-      const scoreRef = query(ref(database, "scores"), orderByChild("score"), limitToLast(10));
-      onValue(scoreRef, (snapshot) => {
-        list.innerHTML = "";
-        const scores = [];
-        snapshot.forEach((child) => {
-          scores.push(child.val());
+      try {
+        const scoreRef = query(ref(database, "scores"), orderByChild("score"), limitToLast(10));
+        onValue(scoreRef, (snapshot) => {
+          console.log("Leaderboard data received");
+          list.innerHTML = "";
+          const scores = [];
+          snapshot.forEach((child) => {
+            scores.push(child.val());
+          });
+          if (scores.length === 0) {
+            list.innerHTML = "<li>No scores yet.</li>";
+            return;
+          }
+          scores.reverse().forEach((entry, i) => {
+            const li = document.createElement("li");
+            li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
+            list.appendChild(li);
+          });
+        }, (error) => {
+          console.error("Error updating leaderboard:", error);
+          list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
         });
-        if (scores.length === 0) {
-          list.innerHTML = "<li>No scores yet.</li>";
-          return;
-        }
-        scores.reverse().forEach((entry, i) => {
-          const li = document.createElement("li");
-          li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
-          list.appendChild(li);
-        });
-      }, (error) => {
-        console.error("Error updating leaderboard:", error);
+      } catch (error) {
+        console.error("Error in showLeaderboard:", error);
         list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
-      });
+      }
     }
 
     function startGame() {
-      const input = document.getElementById("nickname");
-      nickname = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
-      nickname = nickname || "Anonymous";
-      localStorage.setItem("dinoNickname", nickname);
-      document.getElementById("nickname-form").style.display = "none";
-      showLeaderboard();
-      animationFrameId = requestAnimationFrame(loop);
+      try {
+        console.log("Starting game...");
+        const input = document.getElementById("nickname");
+        if (!input) {
+          console.error("Nickname input not found");
+          return;
+        }
+        nickname = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
+        nickname = nickname || "Anonymous";
+        localStorage.setItem("dinoNickname", nickname);
+        const form = document.getElementById("nickname-form");
+        if (form) {
+          form.style.display = "none";
+        } else {
+          console.error("Nickname form not found");
+        }
+
+        // Start game loop
+        if (canvas && ctx) {
+          console.log("Starting game loop");
+          animationFrameId = requestAnimationFrame(loop);
+        } else {
+          console.error("Cannot start game: Canvas or context not available");
+        }
+
+        // Load leaderboard asynchronously
+        setTimeout(() => {
+          console.log("Loading leaderboard...");
+          showLeaderboard();
+        }, 0);
+      } catch (error) {
+        console.error("Error in startGame:", error);
+      }
     }
 
     function restartGame() {
-      score = 0;
-      gameSpeed = 6;
-      gameOver = false;
-      obstacles = [];
-      powerUps = [];
-      hasShield = false;
-      dino.y = canvas.height - 20;
-      dino.vy = 0;
-      dino.jumping = false;
-      dino.jumpCooldown = 0;
-      lastObstacleSpawn = 0;
-      document.getElementById("game-over").classList.remove("show");
-      document.getElementById("touch-btn").style.display = "block";
-      animationFrameId = requestAnimationFrame(loop);
+      try {
+        console.log("Restarting game...");
+        score = 0;
+        gameSpeed = 6;
+        gameOver = false;
+        obstacles = [];
+        powerUps = [];
+        hasShield = false;
+        dino.y = canvas ? canvas.height - 20 : 230;
+        dino.vy = 0;
+        dino.jumping = false;
+        dino.jumpCooldown = 0;
+        lastObstacleSpawn = 0;
+        const gameOverDiv = document.getElementById("game-over");
+        if (gameOverDiv) {
+          gameOverDiv.classList.remove("show");
+        }
+        const touchBtn = document.getElementById("touch-btn");
+        if (touchBtn) {
+          touchBtn.style.display = "block";
+        }
+        if (canvas && ctx) {
+          animationFrameId = requestAnimationFrame(loop);
+        } else {
+          console.error("Cannot restart game: Canvas or context not available");
+        }
+      } catch (error) {
+        console.error("Error in restartGame:", error);
+      }
     }
 
     window.onload = () => {
-      const savedName = localStorage.getItem("dinoNickname");
-      if (savedName) {
-        nickname = savedName;
-        document.getElementById("nickname-form").style.display = "none";
-        showLeaderboard();
-        animationFrameId = requestAnimationFrame(loop);
-      } else {
-        document.getElementById("nickname-form").style.display = "flex";
+      try {
+        console.log("Window loaded");
+        const savedName = localStorage.getItem("dinoNickname");
+        if (savedName) {
+          nickname = savedName;
+          const form = document.getElementById("nickname-form");
+          if (form) {
+            form.style.display = "none";
+          }
+          setTimeout(() => {
+            showLeaderboard();
+          }, 0);
+          if (canvas && ctx) {
+            animationFrameId = requestAnimationFrame(loop);
+          } else {
+            console.error("Cannot start game on load: Canvas or context not available");
+          }
+        } else {
+          const form = document.getElementById("nickname-form");
+          if (form) {
+            form.style.display = "flex";
+          }
+        }
+      } catch (error) {
+        console.error("Error in window.onload:", error);
       }
     };
   </script>
