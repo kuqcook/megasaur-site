@@ -82,7 +82,7 @@
 
     @media (pointer: coarse) {
       #touch-btn {
-        display: block;
+        display: block !important;
       }
     }
 
@@ -200,15 +200,19 @@
         return false;
       }
 
-      // Resize canvas
+      // Resize canvas with minimum size
       function resizeCanvas() {
-        const maxWidth = window.innerWidth > 768 ? 1400 : window.innerWidth - 40;
+        const maxWidth = Math.max(300, window.innerWidth > 768 ? 1400 : window.innerWidth - 40);
         canvas.width = maxWidth;
         canvas.height = maxWidth / (1400 / 250);
         console.log("Canvas resized:", canvas.width, canvas.height);
       }
       window.addEventListener("resize", resizeCanvas);
       resizeCanvas();
+
+      // Test rendering
+      ctx.fillStyle = "red";
+      ctx.fillRect(10, 10, 50, 50);
 
       // Initialize game state
       dino = {
@@ -238,7 +242,7 @@
         { x: canvas.width + 900, y: 70, emoji: "🌙", size: 35 },
       ];
 
-      console.log("Game initialized successfully");
+      console.log("Game initialized successfully:", { canvas: !!canvas, ctx: !!ctx });
       return true;
     }
 
@@ -252,6 +256,7 @@
     ];
 
     function spawnObstacle(timestamp) {
+      console.log("Spawn check:", { obstacles: obstacles.length, timeSinceLast: timestamp - lastObstacleSpawn });
       if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
         obstacles.push({
@@ -292,17 +297,17 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Draw background (moons and stars)
-        ctx.font = "30px serif";
+        ctx.font = "30px 'Segoe UI Emoji', serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         backgroundObjects.forEach((obj) => {
           ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-          ctx.font = `${obj.size}px serif`;
+          ctx.font = `${obj.size}px 'Segoe UI Emoji', serif`;
           ctx.fillText(obj.emoji, obj.x, obj.y);
         });
 
         // Draw ground with emoji
-        ctx.font = "20px serif";
+        ctx.font = "20px 'Segoe UI Emoji', serif";
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         for (let x = 0; x < canvas.width; x += 15) {
@@ -314,7 +319,7 @@
         ctx.save();
         ctx.translate(dino.x + dino.width / 2, dino.y);
         ctx.scale(-1, 1);
-        ctx.font = "32px serif";
+        ctx.font = "32px 'Segoe UI Emoji', serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
         const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
@@ -324,7 +329,7 @@
 
         // Draw obstacles
         obstacles.forEach((obstacle) => {
-          ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
+          ctx.font = obstacle.type === "pterodactyl" ? "30px 'Segoe UI Emoji', serif" : "40px 'Segoe UI Emoji', serif";
           ctx.textAlign = "left";
           ctx.textBaseline = "bottom";
           ctx.fillStyle = "white";
@@ -333,11 +338,18 @@
 
         // Draw power-ups
         powerUps.forEach((powerUp) => {
-          ctx.font = "30px serif";
+          ctx.font = "30px 'Segoe UI Emoji', serif";
           ctx.textAlign = "left";
           ctx.textBaseline = "bottom";
           ctx.fillStyle = "yellow";
           ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
+        });
+
+        // Draw hitboxes for debugging
+        ctx.strokeStyle = "red";
+        ctx.strokeRect(dino.x + 5, dino.y + 5, dino.width - 10, dino.height - 10);
+        obstacles.forEach((obstacle) => {
+          ctx.strokeRect(obstacle.x + 5, obstacle.y + 5, obstacle.width - 10, obstacle.height - 10);
         });
 
         // Draw score and shield status
@@ -424,13 +436,14 @@
           width: obstacle.width - 10,
           height: obstacle.height - 10,
         };
-
+        console.log("Collision check:", { dinoHitbox, obstacleHitbox });
         if (
           dinoHitbox.x < obstacleHitbox.x + obstacleHitbox.width &&
           dinoHitbox.x + dinoHitbox.width > obstacleHitbox.x &&
           dinoHitbox.y < obstacleHitbox.y + obstacleHitbox.height &&
           dinoHitbox.y + dinoHitbox.height > obstacleHitbox.y
         ) {
+          console.log("Collision detected!");
           if (hasShield) {
             hasShield = false;
             obstacles.splice(obstacles.indexOf(obstacle), 1);
@@ -463,6 +476,7 @@
     }
 
     function jump() {
+      console.log("Jump attempt:", { jumping: dino.jumping, cooldown: dino.jumpCooldown });
       if (!dino.jumping && dino.jumpCooldown <= 0) {
         dino.vy = -12;
         dino.jumping = true;
@@ -477,8 +491,8 @@
         return;
       }
       try {
-        console.log("Game loop running, timestamp:", timestamp);
-        const deltaTime = timestamp - lastFrameTime;
+        console.log("Frame:", animationFrameId, "Timestamp:", timestamp);
+        const deltaTime = Math.min(timestamp - lastFrameTime, 50);
         lastFrameTime = timestamp;
 
         update(deltaTime, timestamp);
@@ -609,6 +623,7 @@
         dino.jumping = false;
         dino.jumpCooldown = 0;
         lastObstacleSpawn = 0;
+        lastFrameTime = performance.now();
         const gameOverDiv = document.getElementById("game-over");
         if (gameOverDiv) {
           gameOverDiv.classList.remove("show");
@@ -635,11 +650,20 @@
     // Add event listeners
     window.addEventListener("load", () => {
       try {
-        console.log("Window loaded");
+        console.log("Window loaded, elements:", {
+          startBtn: !!document.getElementById("start-game-btn"),
+          restartBtn: !!document.getElementById("restart-game-btn"),
+          touchBtn: !!document.getElementById("touch-btn"),
+          canvas: !!document.getElementById("game")
+        });
+
         // Add event listener for start game button
         const startButton = document.getElementById("start-game-btn");
         if (startButton) {
-          startButton.addEventListener("click", startGame);
+          startButton.addEventListener("click", () => {
+            console.log("Start button clicked");
+            startGame();
+          });
           console.log("Start game button listener added");
         } else {
           console.error("Start game button not found");
@@ -648,7 +672,10 @@
         // Add event listener for restart game button
         const restartButton = document.getElementById("restart-game-btn");
         if (restartButton) {
-          restartButton.addEventListener("click", restartGame);
+          restartButton.addEventListener("click", () => {
+            console.log("Restart button clicked");
+            restartGame();
+          });
           console.log("Restart game button listener added");
         } else {
           console.error("Restart game button not found");
@@ -656,6 +683,7 @@
 
         // Add event listener for jump
         window.addEventListener("keydown", (e) => {
+          console.log("Key pressed:", e.code);
           if (e.code === "Space") {
             e.preventDefault();
             jump();
@@ -666,6 +694,7 @@
         if (touchBtn) {
           touchBtn.addEventListener("touchstart", (e) => {
             e.preventDefault();
+            console.log("Touch button pressed");
             jump();
           });
           console.log("Touch button listener added");
@@ -705,12 +734,6 @@
         console.error("Error in window.onload:", error.message, error.stack);
       }
     });
-
-    // Alternative: Export functions to global scope (uncomment if event listeners fail)
-    /*
-    window.startGame = startGame;
-    window.restartGame = restartGame;
-    */
   </script>
 </body>
 </html>
