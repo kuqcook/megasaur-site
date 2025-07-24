@@ -238,6 +238,7 @@
         { x: canvas.width + 900, y: 70, emoji: "🌙", size: 35 },
       ];
 
+      console.log("Game initialized successfully");
       return true;
     }
 
@@ -439,6 +440,7 @@
             document.getElementById("final-score").textContent = `Final Score: ${score}`;
             document.getElementById("game-over").classList.add("show");
             document.getElementById("touch-btn").style.display = "none";
+            console.log("Game over triggered");
           }
         }
       }
@@ -454,6 +456,7 @@
           if (powerUp.type === "shield") {
             hasShield = true;
             powerUps.splice(powerUps.indexOf(powerUp), 1);
+            console.log("Shield power-up collected");
           }
         }
       }
@@ -695,12 +698,19 @@
           const form = document.getElementById("nickname-form");
           if (form) {
             form.style.display = "flex";
+            console.log("Nickname form displayed");
           }
         }
       } catch (error) {
         console.error("Error in window.onload:", error.message, error.stack);
       }
     });
+
+    // Alternative: Export functions to global scope (uncomment if event listeners fail)
+    /*
+    window.startGame = startGame;
+    window.restartGame = restartGame;
+    */
   </script>
 </body>
 </html>
