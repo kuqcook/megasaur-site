@@ -159,7 +159,7 @@
 
     const dino = {
       x: 50,
-      y: 250, // Aligned with ground emoji
+      y: 230, // Aligned with new ground level
       vy: 0,
       width: 40,
       height: 40,
@@ -187,12 +187,12 @@
     ];
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 250 }, // Aligned with ground
+      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 }, // Aligned with new ground
       { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
     ];
 
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 250 }, // Aligned with ground
+      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 }, // Aligned with new ground
     ];
 
     function spawnObstacle(timestamp) {
@@ -266,7 +266,7 @@
         ctx.fillStyle = "white";
         ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y + obstacle.height);
         ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-        ctx.fillRect(obstacle.x, 250, obstacle.width, 5);
+        ctx.fillRect(obstacle.x, 230, obstacle.width, 5); // Shadow aligned with new ground
 
         // Debug collision boxes (optional)
         /* ctx.strokeStyle = "red";
@@ -302,18 +302,18 @@
       dino.y += dino.vy * dt;
       dino.vy += gravity * dt;
 
-      if (dino.y > 250) {
-        dino.y = 250;
+      if (dino.y > 230) {
+        dino.y = 230;
         dino.vy = 0;
         dino.jumping = false;
       }
 
       if (dino.crouching) {
         dino.height = 20;
-        dino.y = 260;
+        dino.y = 240;
       } else {
         dino.height = 40;
-        dino.y = Math.min(dino.y, 250);
+        dino.y = Math.min(dino.y, 230);
       }
 
       // Update run animation
@@ -486,7 +486,7 @@
       obstacles = [];
       powerUps = [];
       hasShield = false;
-      dino.y = 250;
+      dino.y = 230;
       dino.vy = 0;
       dino.jumping = false;
       dino.crouching = false;
