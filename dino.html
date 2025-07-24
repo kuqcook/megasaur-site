@@ -159,7 +159,7 @@
 
     const dino = {
       x: 50,
-      y: 180, // Aligned with gates
+      y: 250, // Aligned with ground emoji
       vy: 0,
       width: 40,
       height: 40,
@@ -187,12 +187,12 @@
     ];
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 180 }, // Changed to gate
+      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 250 }, // Aligned with ground
       { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
     ];
 
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 180 },
+      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 250 }, // Aligned with ground
     ];
 
     function spawnObstacle(timestamp) {
@@ -241,7 +241,7 @@
       ctx.font = "20px serif";
       ctx.textAlign = "left";
       ctx.textBaseline = "bottom";
-      for (let x = 0; x < canvas.width; x += 20) {
+      for (let x = 0; x < canvas.width; x += 15) {
         ctx.fillStyle = "#8B4513";
         ctx.fillText("🟫", x, 250);
       }
@@ -266,7 +266,7 @@
         ctx.fillStyle = "white";
         ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y + obstacle.height);
         ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-        ctx.fillRect(obstacle.x, 200, obstacle.width, 5);
+        ctx.fillRect(obstacle.x, 250, obstacle.width, 5);
 
         // Debug collision boxes (optional)
         /* ctx.strokeStyle = "red";
@@ -302,18 +302,18 @@
       dino.y += dino.vy * dt;
       dino.vy += gravity * dt;
 
-      if (dino.y > 180) {
-        dino.y = 180;
+      if (dino.y > 250) {
+        dino.y = 250;
         dino.vy = 0;
         dino.jumping = false;
       }
 
       if (dino.crouching) {
         dino.height = 20;
-        dino.y = 200;
+        dino.y = 260;
       } else {
         dino.height = 40;
-        dino.y = Math.min(dino.y, 180);
+        dino.y = Math.min(dino.y, 250);
       }
 
       // Update run animation
@@ -486,7 +486,7 @@
       obstacles = [];
       powerUps = [];
       hasShield = false;
-      dino.y = 180;
+      dino.y = 250;
       dino.vy = 0;
       dino.jumping = false;
       dino.crouching = false;
