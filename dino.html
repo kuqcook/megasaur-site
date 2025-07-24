@@ -4,9 +4,6 @@
   <meta charset="UTF-8" />
   <title>MEGASaur Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Firebase SDK (loaded asynchronously) -->
-  <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-  <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
   <style>
     body {
       margin: 0;
@@ -163,8 +160,12 @@
 
   <button id="touch-btn">TAP TO JUMP</button>
 
-  <script>
-    // Initialize Firebase (Note: Hardcoding config is insecure; consider environment variables in production)
+  <script type="module">
+    // Import Firebase modular SDK
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
+    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+
+    // Initialize Firebase
     let database;
     try {
       const firebaseConfig = {
@@ -176,11 +177,12 @@
         messagingSenderId: "222910326781",
         appId: "1:222910326781:web:b92195977fda4af2661b94"
       };
-      firebase.initializeApp(firebaseConfig);
-      database = firebase.database();
+      const app = initializeApp(firebaseConfig);
+      database = getDatabase(app);
+      console.log("Firebase initialized successfully");
     } catch (error) {
-      console.error("Firebase initialization error:", error);
-      document.getElementById("scores").innerHTML = "<li>Failed to connect to leaderboard.</li>";
+      console.error("Firebase initialization error:", error.message, error.stack);
+      document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
     }
 
     const canvas = document.getElementById("game");
@@ -452,7 +454,7 @@
 
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") {
-        e.preventDefault(); // Prevent page scrolling
+        e.preventDefault();
         jump();
       }
     });
@@ -468,47 +470,43 @@
         document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
         return;
       }
-      const scoreRef = database.ref("scores");
-      scoreRef
-        .push({
-          name: name || "Anonymous",
-          score: newScore,
-          timestamp: firebase.database.ServerValue.TIMESTAMP
-        })
-        .then(() => {
-          // Leaderboard updates automatically via 'on' listener
-        })
-        .catch((error) => {
-          console.error("Error saving score:", error);
-          document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
-        });
+      const scoreRef = ref(database, "scores");
+      push(scoreRef, {
+        name: name || "Anonymous",
+        score: newScore,
+        timestamp: Date.now()
+      }).catch((error) => {
+        console.error("Error saving score:", error);
+        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
+      });
     }
 
     function showLeaderboard() {
       const list = document.getElementById("scores");
       if (!database) {
-        list.innerHTML = "<li>Failed to connect to leaderboard.</li>";
+        list.innerHTML = "<li>Leaderboard unavailable. Playing offline.</li>";
         return;
       }
-      const scoreRef = database.ref("scores");
-      scoreRef
-        .orderByChild("score")
-        .limitToLast(10)
-        .on("value", (snapshot) => {
-          list.innerHTML = "";
-          const scores = [];
-          snapshot.forEach((child) => {
-            scores.push(child.val());
-          });
-          scores.reverse().forEach((entry, i) => {
-            const li = document.createElement("li");
-            li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
-            list.appendChild(li);
-          });
-        }, (error) => {
-          console.error("Error updating leaderboard:", error);
-          list.innerHTML = "<li>Failed to load leaderboard.</li>";
+      const scoreRef = query(ref(database, "scores"), orderByChild("score"), limitToLast(10));
+      onValue(scoreRef, (snapshot) => {
+        list.innerHTML = "";
+        const scores = [];
+        snapshot.forEach((child) => {
+          scores.push(child.val());
         });
+        if (scores.length === 0) {
+          list.innerHTML = "<li>No scores yet.</li>";
+          return;
+        }
+        scores.reverse().forEach((entry, i) => {
+          const li = document.createElement("li");
+          li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
+          list.appendChild(li);
+        });
+      }, (error) => {
+        console.error("Error updating leaderboard:", error);
+        list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
+      });
     }
 
     function startGame() {
