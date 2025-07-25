@@ -146,7 +146,7 @@
   </style>
 </head>
 <body>
-  <h1>🦖 Game</h1>
+  <h1>🦖 MEGASaur Runner</h1>
 
   <div id="nickname-form">
     <label for="nickname">Enter your nickname:</label>
@@ -231,8 +231,8 @@
         const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
         if (dino) {
           dino.x = logicalCanvasWidth * 0.05;
-          dino.y = logicalCanvasHeight - 30; // Adjusted for visibility
-          dino.width = logicalCanvasWidth * 0.05; // Increased size
+          dino.y = logicalCanvasHeight; // Align with ground
+          dino.width = logicalCanvasWidth * 0.05;
           dino.height = logicalCanvasWidth * 0.05;
         }
         if (backgroundObjects) {
@@ -245,7 +245,7 @@
         if (obstacles) {
           obstacles.forEach(obstacle => {
             const type = obstacleTypes.find(t => t.type === obstacle.type);
-            obstacle.x = logicalCanvasWidth * (obstacle.x / 800); // Rescale x
+            obstacle.x = logicalCanvasWidth * (obstacle.x / 800);
             obstacle.y = logicalCanvasHeight * type.y;
             obstacle.width = logicalCanvasWidth * type.width;
             obstacle.height = logicalCanvasHeight * type.height;
@@ -268,7 +268,7 @@
       const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
       dino = {
         x: logicalCanvasWidth * 0.05,
-        y: logicalCanvasHeight - 30,
+        y: logicalCanvasHeight,
         vy: 0,
         width: logicalCanvasWidth * 0.05,
         height: logicalCanvasWidth * 0.05,
@@ -276,7 +276,7 @@
         jumpCooldown: 0,
         frame: 0,
       };
-      gravity = 0.8; // Increased for snappier jumps
+      gravity = 0.8;
       obstacles = [];
       powerUps = [];
       score = 0;
@@ -295,22 +295,22 @@
     }
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 0.06, height: 0.06, y: 0.9 }, // Adjusted for alignment
-      { type: "pterodactyl", emoji: "🦅", width: 0.08, height: 0.04, y: 0.65 },
-      { type: "rock", emoji: "🪨", width: 0.07, height: 0.07, y: 0.9 }
+      { type: "gate", emoji: "⛩️", width: 0.06, height: 0.06, y: 1.0 }, // Align with ground
+      { type: "pterodactyl", emoji: "🦅", width: 0.08, height: 0.04, y: 0.7 },
+      { type: "rock", emoji: "🪨", width: 0.07, height: 0.07, y: 1.0 }
     ];
 
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 0.04, height: 0.04, y: 0.9 },
+      { type: "shield", emoji: "🛡️", width: 0.04, height: 0.04, y: 1.0 },
     ];
 
     function spawnObstacle(timestamp) {
       const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
       const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
-      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 800) { // Reduced interval
+      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 800) {
         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
         const newObstacle = {
-          x: logicalCanvasWidth, // Start at canvas edge
+          x: logicalCanvasWidth,
           y: logicalCanvasHeight * type.y,
           width: logicalCanvasWidth * type.width,
           height: logicalCanvasHeight * type.height,
@@ -319,7 +319,7 @@
         };
         if (newObstacle.y > logicalCanvasHeight || newObstacle.y < 0 || newObstacle.x < logicalCanvasWidth) {
           console.warn("Obstacle out of bounds:", newObstacle);
-          newObstacle.y = logicalCanvasHeight * 0.9;
+          newObstacle.y = logicalCanvasHeight * type.y;
           newObstacle.x = logicalCanvasWidth;
         }
         obstacles.push(newObstacle);
@@ -331,7 +331,7 @@
     function spawnPowerUp() {
       const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
       const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
-      if (powerUps.length < 1 && Math.random() < 0.001) { // Increased spawn chance
+      if (powerUps.length < 1 && Math.random() < 0.001) {
         const hasNearbyObstacle = obstacles.some(obstacle => 
           (obstacle.type === "gate" || obstacle.type === "rock") && 
           Math.abs(obstacle.x - (logicalCanvasWidth + 50)) < 100
@@ -348,7 +348,7 @@
         };
         if (newPowerUp.y > logicalCanvasHeight || newPowerUp.y < 0) {
           console.warn("PowerUp out of bounds:", newPowerUp);
-          newPowerUp.y = logicalCanvasHeight * 0.9;
+          newPowerUp.y = logicalCanvasHeight * type.y;
         }
         powerUps.push(newPowerUp);
         console.log("Spawned power-up:", { type: type.type, x: newPowerUp.x, y: newPowerUp.y, width: newPowerUp.width, height: newPowerUp.height });
@@ -380,25 +380,23 @@
       ctx.save();
       ctx.translate(dino.x + dino.width / 2, dino.y - dino.height / 2);
       ctx.scale(-1, 1);
-      ctx.font = `${logicalCanvasWidth * 0.06}px 'Segoe UI Emoji', 'Arial', sans-serif`; // Increased dino size
+      ctx.font = `${logicalCanvasWidth * 0.05}px 'Segoe UI Emoji', 'Arial', sans-serif`;
       ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
       ctx.fillText(dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2], 0, 0);
+      ctx.restore();
       if (DEBUG) {
-        ctx.restore();
         ctx.strokeStyle = "blue";
         ctx.strokeRect(dino.x, dino.y - dino.height, dino.width, dino.height);
-        ctx.save();
       }
-      ctx.restore();
 
       obstacles.forEach(obstacle => {
         ctx.font = obstacle.type === "pterodactyl" ? 
           `${logicalCanvasWidth * 0.04}px 'Segoe UI Emoji', 'Arial', sans-serif` : 
           `${logicalCanvasWidth * 0.06}px 'Segoe UI Emoji', 'Arial', sans-serif`;
-        ctx.textAlign = "left";
+        ctx.textAlign = "center";
         ctx.textBaseline = "bottom";
         ctx.fillStyle = obstacle.type === "rock" ? "gray" : "white";
-        ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
+        ctx.fillText(obstacle.emoji, obstacle.x + obstacle.width / 2, obstacle.y);
         if (DEBUG && obstacle.x >= -obstacle.width && obstacle.x <= logicalCanvasWidth) {
           ctx.strokeStyle = "red";
           ctx.strokeRect(obstacle.x, obstacle.y - obstacle.height, obstacle.width, obstacle.height);
@@ -409,7 +407,9 @@
       powerUps.forEach(powerUp => {
         ctx.font = `${logicalCanvasWidth * 0.04}px 'Segoe UI Emoji', 'Arial', sans-serif`;
         ctx.fillStyle = "yellow";
-        ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillText(powerUp.emoji, powerUp.x + powerUp.width / 2, powerUp.y);
         if (DEBUG) {
           ctx.strokeStyle = "yellow";
           ctx.strokeRect(powerUp.x, powerUp.y - powerUp.height, powerUp.width, powerUp.height);
@@ -434,8 +434,8 @@
       dino.vy += gravity * dt;
 
       const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
-      if (dino.y > logicalCanvasHeight - dino.height) {
-        dino.y = logicalCanvasHeight - dino.height;
+      if (dino.y > logicalCanvasHeight) {
+        dino.y = logicalCanvasHeight;
         dino.vy = 0;
         dino.jumping = false;
       }
@@ -470,8 +470,18 @@
       if (dino.jumpCooldown > 0) dino.jumpCooldown -= dt;
 
       for (let obstacle of obstacles) {
-        const dinoHitbox = { x: dino.x, y: dino.y - dino.height, width: dino.width, height: dino.height };
-        const obstacleHitbox = { x: obstacle.x, y: obstacle.y - obstacle.height, width: obstacle.width, height: obstacle.height };
+        const dinoHitbox = { 
+          x: dino.x, 
+          y: dino.y - dino.height, 
+          width: dino.width, 
+          height: dino.height 
+        };
+        const obstacleHitbox = { 
+          x: obstacle.x, 
+          y: obstacle.y - obstacle.height, 
+          width: obstacle.width, 
+          height: obstacle.height 
+        };
         if (DEBUG) {
           console.log("Collision check:", { dinoHitbox, obstacleHitbox });
         }
@@ -497,8 +507,18 @@
       }
 
       for (let powerUp of powerUps) {
-        const dinoHitbox = { x: dino.x, y: dino.y - dino.height, width: dino.width, height: dino.height };
-        const powerUpHitbox = { x: powerUp.x, y: powerUp.y - powerUp.height, width: powerUp.width, height: powerUp.height };
+        const dinoHitbox = { 
+          x: dino.x, 
+          y: dino.y - dino.height, 
+          width: dino.width, 
+          height: dino.height 
+        };
+        const powerUpHitbox = { 
+          x: powerUp.x, 
+          y: powerUp.y - powerUp.height, 
+          width: powerUp.width, 
+          height: powerUp.height 
+        };
         if (
           dinoHitbox.x < powerUpHitbox.x + powerUpHitbox.width &&
           dinoHitbox.x + dinoHitbox.width > powerUpHitbox.x &&
@@ -516,7 +536,7 @@
 
     function jump() {
       if (!dino.jumping && dino.jumpCooldown <= 0) {
-        dino.vy = -14; // Increased jump height
+        dino.vy = -14;
         dino.jumping = true;
         dino.jumpCooldown = 15;
         console.log("Jump triggered, dino.y:", dino.y);
@@ -622,7 +642,7 @@
       obstacles = [];
       powerUps = [];
       hasShield = false;
-      dino.y = canvas.height / window.devicePixelRatio - dino.height;
+      dino.y = canvas.height / window.devicePixelRatio;
       dino.vy = 0;
       dino.jumping = false;
       dino.jumpCooldown = 0;
