@@ -5,772 +5,567 @@
   <title>MEGASaur Runner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      margin: 0;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: white;
-      display: flex;
+  body {
+    margin: 0;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  h1 {
+    margin-top: 20px;
+    font-size: 2rem;
+    text-shadow: 2px 2px #00f0ff;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    max-width: 1600px;
+    width: 100%;
+  }
+
+  canvas {
+    background: rgba(0, 0, 0, 0.5);
+    border: 4px solid #00f0ff;
+    border-radius: 16px;
+    margin: 20px;
+    flex-grow: 1;
+    image-rendering: pixelated;
+    touch-action: none;
+  }
+
+  #leaderboard {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 20px;
+    width: 260px;
+    box-shadow: 0 0 10px #00f0ff;
+  }
+
+  #leaderboard h2 {
+    margin-bottom: 10px;
+    font-size: 1.3rem;
+  }
+
+  ol#scores {
+    padding-left: 20px;
+  }
+
+  ol#scores li {
+    font-size: 1rem;
+    color: #00f0ff;
+  }
+
+  #touch-btn {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 100px;
+    padding: 10px;
+    font-size: 1.2rem;
+    background: #00f0ff;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+    touch-action: manipulation;
+  }
+
+  @media (pointer: coarse) {
+    #touch-btn {
+      display: block;
+    }
+  }
+
+  #nickname-form, #game-over {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 20;
+    width: 90%;
+    max-width: 300px;
+  }
+
+  #nickname-form input, #game-over button {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    margin-top: 10px;
+    border-radius: 5px;
+  }
+
+  #nickname-form button, #game-over button {
+    background: #00f0ff;
+    color: black;
+    border: none;
+    cursor: pointer;
+  }
+
+  #game-over.show {
+    display: flex;
+    opacity: 1;
+  }
+
+  #game-over {
+    opacity: 0;
+  }
+
+  @media (max-width: 768px) {
+    .container {
       flex-direction: column;
       align-items: center;
-      overflow: hidden;
-    }
-
-    h1 {
-      margin-top: 20px;
-      font-size: 2rem;
-      text-shadow: 2px 2px #00f0ff;
-    }
-
-    .container {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      max-width: 1600px;
-      width: 100%;
     }
 
     canvas {
-      background: rgba(0, 0, 0, 0.5);
-      border: 4px solid #00f0ff;
-      border-radius: 16px;
-      margin: 20px;
-      flex-grow: 1;
-      image-rendering: pixelated;
+      margin: 10px;
     }
 
     #leaderboard {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      padding: 16px;
-      margin: 20px;
-      width: 260px;
-      box-shadow: 0 0 10px #00f0ff;
+      width: 90%;
+      max-width: 300px;
     }
+  }
+</style>
 
-    #leaderboard h2 {
-      margin-bottom: 10px;
-      font-size: 1.3rem;
-    }
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
+  import { getDatabase, ref, onValue, query, orderByChild, limitToLast, get, set } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js';
 
-    ol#scores {
-      padding-left: 20px;
-    }
+  let database;
+  async function initializeFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyACFWv9js50STTex2TzTjEubBP_3heZXgc",
+      authDomain: "megasaur-runner.firebaseapp.com",
+      databaseURL: "https://megasaur-runner-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "megasaur-runner",
+      storageBucket: "megasaur-runner.firebasestorage.app",
+      messagingSenderId: "222910326781",
+      appId: "1:222910326781:web:b92195977fda4af2661b94",
+      measurementId: "G-6CLF0GE5YM"
+    };
 
-    ol#scores li {
-      font-size: 1rem;
-      color: #00f0ff;
-    }
-
-    #touch-btn {
-      display: none;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      padding: 1rem;
-      font-size: 1.5rem;
-      font-weight: bold;
-      background: #00f0ff;
-      color: #000;
-      border: none;
-      border-top: 2px solid #fff;
-      z-index: 10;
-    }
-
-    @media (pointer: coarse) {
-      #touch-btn {
-        display: block;
-      }
-    }
-
-    #nickname-form, #game-over {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      margin-top: 20px;
-      transition: opacity 0.5s ease-in-out;
-    }
-
-    #nickname-form input, #game-over button {
-      padding: 8px;
-      font-size: 1rem;
-      margin-top: 8px;
-    }
-
-    #nickname-form button, #game-over button {
-      padding: 8px 16px;
-      margin-top: 8px;
-      font-size: 1rem;
-      background: #00f0ff;
-      color: black;
-      border: none;
-      cursor: pointer;
-    }
-
-    #game-over.show {
-      display: flex;
-      opacity: 1;
-    }
-
-    #game-over {
-      opacity: 0;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 20px;
-      border-radius: 10px;
-    }
-
-    @media (max-width: 768px) {
-      .container {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      canvas {
-        width: 100% !important;
-      }
-    }
-  </style>
-</head>
-<body>
-  <h1>🦖 MEGASaur Runner</h1>
-
-  <div id="nickname-form">
-    <label for="nickname">Enter your nickname:</label>
-    <input type="text" id="nickname" placeholder="e.g. DinoMaster" maxlength="20" />
-    <button id="start-game-btn">Start Game</button>
-  </div>
-
-  <div id="game-over">
-    <h2>Game Over!</h2>
-    <p id="final-score"></p>
-    <button id="restart-game-btn">Play Again</button>
-  </div>
-
-  <div class="container">
-    <canvas id="game"></canvas>
-
-    <div id="leaderboard">
-      <h2>🏆 Top 10 Dinos</h2>
-      <ol id="scores"></ol>
-    </div>
-  </div>
-
-  <button id="touch-btn">TAP TO JUMP</button>
-
-  <script type="module">
-    // Import Firebase modular SDK
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
-    import { getDatabase, ref, onValue, query, orderByChild, limitToLast, get, set } from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js';
-
-    // Initialize Firebase with retry mechanism
-    let database;
-    async function initializeFirebase() {
-      const firebaseConfig = {
-        apiKey: "AIzaSyACFWv9js50STTex2TzTjEubBP_3heZXgc",
-        authDomain: "megasaur-runner.firebaseapp.com",
-        databaseURL: "https://megasaur-runner-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "megasaur-runner",
-        storageBucket: "megasaur-runner.firebasestorage.app",
-        messagingSenderId: "222910326781",
-        appId: "1:222910326781:web:b92195977fda4af2661b94",
-        measurementId: "G-6CLF0GE5YM"
-      };
-
-      let retries = 3;
-      while (retries > 0) {
-        try {
-          console.log("Attempting Firebase initialization...");
-          const app = initializeApp(firebaseConfig);
-          database = getDatabase(app);
-          console.log("Firebase initialized successfully");
-          // Verify database connection with read
-          await get(ref(database, '/'));
-          console.log("Database read access verified");
-          // Verify write access
-          console.log("Testing Firebase write access");
-          await set(ref(database, 'test-connection'), { test: true, timestamp: Date.now() });
-          console.log("Database write access verified");
-          document.getElementById("scores").innerHTML = "";
-          return true;
-        } catch (error) {
-          console.error(`Firebase initialization attempt failed (retries left: ${retries}):`, error.message, error.stack);
-          retries--;
-          if (retries === 0) {
-            console.error("Firebase initialization failed after retries:", error.message, error.stack);
-            document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
-            return false;
-          }
-          // Wait 1 second before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000));
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const app = initializeApp(firebaseConfig);
+        database = getDatabase(app);
+        await get(ref(database, '/'));
+        await set(ref(database, 'test-connection'), { test: true, timestamp: Date.now() });
+        document.getElementById("scores").innerHTML = "";
+        return true;
+      } catch (error) {
+        console.error(`Firebase initialization attempt failed (retries left: ${retries}):`, error);
+        retries--;
+        if (retries === 0) {
+          document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
+          return false;
         }
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
+  }
 
-    let canvas, ctx, dino, gravity, obstacles, powerUps, score, gameSpeed, gameOver, nickname, hasShield, lastFrameTime, lastObstacleSpawn, animationFrameId, backgroundObjects;
+  let canvas, ctx, dino, gravity, obstacles, powerUps, score, gameSpeed, gameOver, nickname, hasShield, lastFrameTime, lastObstacleSpawn, animationFrameId, backgroundObjects;
 
-    function initializeGame() {
-      console.log("Initializing game...");
-      canvas = document.getElementById("game");
-      if (!canvas) {
-        console.error("Canvas element not found");
-        return false;
-      }
-      ctx = canvas.getContext("2d");
-      if (!ctx) {
-        console.error("Canvas context not available");
-        return false;
-      }
+  function initializeGame() {
+    canvas = document.getElementById("game");
+    if (!canvas) return false;
+    ctx = canvas.getContext("2d");
+    if (!ctx) return false;
 
-      // Resize canvas
-      function resizeCanvas() {
-        const maxWidth = window.innerWidth > 768 ? 1400 : window.innerWidth - 40;
-        canvas.width = maxWidth;
-        canvas.height = maxWidth / (1400 / 250);
-        console.log("Canvas resized:", canvas.width, canvas.height);
-      }
-      window.addEventListener("resize", resizeCanvas);
-      resizeCanvas();
-
-      // Initialize game state
-      dino = {
-        x: 50,
-        y: canvas.height - 20,
-        vy: 0,
-        width: 40,
-        height: 40,
-        jumping: false,
-        jumpCooldown: 0,
-        frame: 0,
-      };
-      gravity = 0.5;
-      obstacles = [];
-      powerUps = [];
-      score = 0;
-      gameSpeed = 6;
-      gameOver = false;
-      nickname = nickname || "";
-      hasShield = false;
-      lastFrameTime = performance.now();
-      lastObstacleSpawn = 0;
-      backgroundObjects = [
-        { x: canvas.width, y: 50, emoji: "🌙", size: 30 },
-        { x: canvas.width + 300, y: 80, emoji: "⭐", size: 20 },
-        { x: canvas.width + 600, y: 60, emoji: "⭐", size: 25 },
-        { x: canvas.width + 900, y: 70, emoji: "🌙", size: 35 },
-      ];
-
-      console.log("Game initialized successfully");
-      return true;
+    function resizeCanvas() {
+      const maxWidth = Math.min(window.innerWidth - 20, 800);
+      canvas.width = maxWidth * window.devicePixelRatio;
+      canvas.height = (maxWidth / 2) * window.devicePixelRatio;
+      canvas.style.width = `${maxWidth}px`;
+      canvas.style.height = `${maxWidth / 2}px`;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
     }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    dino = {
+      x: canvas.width * 0.05,
+      y: canvas.height - 20,
+      vy: 0,
+      width: canvas.width * 0.03,
+      height: canvas.width * 0.03,
+      jumping: false,
+      jumpCooldown: 0,
+      frame: 0,
+    };
+    gravity = 0.5;
+    obstacles = [];
+    powerUps = [];
+    score = 0;
+    gameSpeed = 6;
+    gameOver = false;
+    nickname = nickname || "";
+    hasShield = false;
+    lastFrameTime = performance.now();
+    lastObstacleSpawn = 0;
+    backgroundObjects = [
+      { x: canvas.width, y: canvas.height * 0.2, emoji: "🌙", size: 20 },
+      { x: canvas.width + 300, y: canvas.height * 0.3, emoji: "⭐", size: 15 },
+    ];
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
-      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
-      { type: "rock", emoji: "🪨", width: 50, height: 45, y: 230 }
+      { type: "gate", emoji: "⛩️", width: canvas.width * 0.03, height: canvas.width * 0.03, y: canvas.height - 20 },
+      { type: "pterodactyl", emoji: "🦅", width: canvas.width * 0.04, height: canvas.width * 0.02, y: canvas.height * 0.6 },
+      { type: "rock", emoji: "🪨", width: canvas.width * 0.035, height: canvas.width * 0.032, y: canvas.height - 20 }
     ];
 
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 },
+      { type: "shield", emoji: "🛡️", width: canvas.width * 0.02, height: canvas.width * 0.02, y: canvas.height - 20 },
     ];
 
-    function spawnObstacle(timestamp) {
-      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
-        const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-        obstacles.push({
-          x: canvas.width + 100 + Math.random() * 300,
-          y: type.y,
-          width: type.width,
-          height: type.height,
-          type: type.type,
-          emoji: type.emoji,
-        });
-        lastObstacleSpawn = timestamp;
-        console.log("Spawned obstacle:", type.type);
-      }
-    }
+    return true;
+  }
 
-    function spawnPowerUp() {
-      if (powerUps.length < 1 && Math.random() < 0.0005) {
-        // Check for nearby gates or rocks
-        const hasNearbyObstacle = obstacles.some(obstacle => 
-          (obstacle.type === "gate" || obstacle.type === "rock") && 
-          Math.abs(obstacle.x - (canvas.width + 100)) < 100
-        );
-        if (hasNearbyObstacle) {
-          console.log("Power-up spawn blocked by nearby gate or rock");
-          return;
-        }
-        const type = powerUpTypes[0];
-        powerUps.push({
-          x: canvas.width + 100 + Math.random() * 300,
-          y: type.y,
-          width: type.width,
-          height: type.height,
-          type: type.type,
-          emoji: type.emoji,
-        });
-        console.log("Spawned power-up:", type.type);
-      }
-    }
+  const obstacleTypes = [
+    { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
+    { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
+    { type: "rock", emoji: "🪨", width: 50, height: 45, y: 230 }
+  ];
 
-    function draw() {
-      if (!ctx || !canvas) {
-        console.error("Cannot draw: Canvas or context not available");
-        return;
-      }
-      try {
-        console.log("Drawing frame...");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const powerUpTypes = [
+    { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 },
+  ];
 
-        // Draw background (moons and stars)
-        ctx.font = "30px serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        backgroundObjects.forEach((obj) => {
-          ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-          ctx.font = `${obj.size}px serif`;
-          ctx.fillText(obj.emoji, obj.x, obj.y);
-        });
-
-        // Draw ground with emoji
-        ctx.font = "20px serif";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "bottom";
-        for (let x = 0; x < canvas.width; x += 15) {
-          ctx.fillStyle = "#8B4513";
-          ctx.fillText("🟫", x, canvas.height - 5);
-        }
-
-        // Draw dino
-        ctx.save();
-        ctx.translate(dino.x + dino.width / 2, dino.y);
-        ctx.scale(-1, 1);
-        ctx.font = "32px serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
-        const dinoEmoji = dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2];
-        ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
-        ctx.fillText(dinoEmoji, 0, 0);
-        ctx.restore();
-
-        // Draw obstacles
-        obstacles.forEach((obstacle) => {
-          ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "bottom";
-          ctx.fillStyle = obstacle.type === "rock" ? "gray" : "white";
-          ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
-        });
-
-        // Draw power-ups
-        powerUps.forEach((powerUp) => {
-          ctx.font = "30px serif";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "bottom";
-          ctx.fillStyle = "yellow";
-          ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
-        });
-
-        // Draw score, shield status, and nickname
-        ctx.fillStyle = "#00f0ff";
-        ctx.font = "20px monospace";
-        ctx.fillText(`Score: ${score}`, 10, 30);
-        if (hasShield) {
-          ctx.fillText("🛡️ Shield Active!", 10, 60);
-        }
-        ctx.fillText(`Player: ${nickname || "Anonymous"}`, 10, 90);
-      } catch (error) {
-        console.error("Error in draw function:", error.message, error.stack);
-      }
-    }
-
-    function update(deltaTime, timestamp) {
-      if (gameOver) return;
-
-      const dt = deltaTime / 16.67;
-
-      // Update dino
-      dino.y += dino.vy * dt;
-      dino.vy += gravity * dt;
-
-      if (dino.y > canvas.height - 20) {
-        dino.y = canvas.height - 20;
-        dino.vy = 0;
-        dino.jumping = false;
-      }
-
-      // Update run animation
-      dino.frame += dt;
-      if (dino.frame > 20) dino.frame = 0;
-
-      // Update background objects
-      backgroundObjects.forEach((obj) => {
-        obj.x -= 0.5 * dt;
-        if (obj.x < -obj.size) {
-          obj.x = canvas.width + obj.size;
-        }
+  function spawnObstacle(timestamp) {
+    if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
+      const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+      obstacles.push({
+        x: canvas.width + 100 + Math.random() * 300,
+        y: canvas.height - 20,
+        width: type.width * (canvas.width / 1400),
+        height: type.height * (canvas.width / 1400),
+        type: type.type,
+        emoji: type.emoji,
       });
+      lastObstacleSpawn = timestamp;
+    }
+  }
 
-      // Update obstacles
-      obstacles.forEach((obstacle, index) => {
-        obstacle.x -= gameSpeed * dt;
-        if (obstacle.x < -obstacle.width) {
-          obstacles.splice(index, 1);
-          score++;
-        }
+  function spawnPowerUp() {
+    if (powerUps.length < 1 && Math.random() < 0.0005) {
+      const hasNearbyObstacle = obstacles.some(obstacle => 
+        (obstacle.type === "gate" || obstacle.type === "rock") && 
+        Math.abs(obstacle.x - (canvas.width + 100)) < 100
+      );
+      if (hasNearbyObstacle) return;
+      const type = powerUpTypes[0];
+      powerUps.push({
+        x: canvas.width + 100 + Math.random() * 300,
+        y: canvas.height - 20,
+        width: type.width * (canvas.width / 1400),
+        height: type.height * (canvas.width / 1400),
+        type: type.type,
+        emoji: type.emoji,
       });
+    }
+  }
 
-      // Update power-ups
-      powerUps.forEach((powerUp, index) => {
-        powerUp.x -= gameSpeed * dt;
-        if (powerUp.x < -powerUp.width) {
-          powerUps.splice(index, 1);
-        }
-      });
+  function draw() {
+    if (!ctx || !canvas) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
 
-      // Spawn new obstacles
-      spawnObstacle(timestamp);
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    backgroundObjects.forEach(obj => {
+      ctx.font = `${obj.size}px serif`;
+      ctx.fillText(obj.emoji, obj.x, obj.y);
+    });
 
-      // Spawn power-ups
-      spawnPowerUp();
-
-      // Increase game speed
-      gameSpeed = 6 + score / 300;
-
-      // Update jump cooldown
-      if (dino.jumpCooldown > 0) {
-        dino.jumpCooldown -= dt;
-      }
-
-      // Collision detection
-      for (let obstacle of obstacles) {
-        const dinoHitbox = {
-          x: dino.x + 5,
-          y: dino.y + 5,
-          width: dino.width - 10,
-          height: dino.height - 10,
-        };
-        const obstacleHitbox = {
-          x: obstacle.x + 5,
-          y: obstacle.y + 5,
-          width: obstacle.width - 10,
-          height: obstacle.height - 10,
-        };
-
-        if (
-          dinoHitbox.x < obstacleHitbox.x + obstacleHitbox.width &&
-          dinoHitbox.x + dinoHitbox.width > obstacleHitbox.x &&
-          dinoHitbox.y < obstacleHitbox.y + obstacleHitbox.height &&
-          dinoHitbox.y + dinoHitbox.height > obstacleHitbox.y
-        ) {
-          if (hasShield) {
-            hasShield = false;
-            obstacles.splice(obstacles.indexOf(obstacle), 1);
-            console.log("Shield used, obstacle removed");
-          } else {
-            gameOver = true;
-            saveScore(score, nickname);
-            document.getElementById("final-score").textContent = `Final Score: ${score}`;
-            document.getElementById("game-over").classList.add("show");
-            document.getElementById("touch-btn").style.display = "none";
-            console.log("Game over triggered");
-          }
-        }
-      }
-
-      // Power-up collision
-      for (let powerUp of powerUps) {
-        if (
-          dino.x < powerUp.x + powerUp.width &&
-          dino.x + dino.width > powerUp.x &&
-          dino.y < powerUp.y + powerUp.height &&
-          dino.y + dino.height > powerUp.y
-        ) {
-          if (powerUp.type === "shield") {
-            hasShield = true;
-            powerUps.splice(powerUps.indexOf(powerUp), 1);
-            console.log("Shield power-up collected");
-          }
-        }
-      }
+    ctx.font = "20px serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "#8B4513";
+    for (let x = 0; x < canvas.width; x += 15) {
+      ctx.fillText("🟫", x, canvas.height - 5);
     }
 
-    function jump() {
-      if (!dino.jumping && dino.jumpCooldown <= 0) {
-        dino.vy = -12;
-        dino.jumping = true;
-        dino.jumpCooldown = 15;
-        console.log("Jump triggered");
-      }
+    ctx.save();
+    ctx.translate(dino.x + dino.width / 2, dino.y);
+    ctx.scale(-1, 1);
+    ctx.font = "32px serif";
+    ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
+    ctx.fillText(dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2], 0, 0);
+    ctx.restore();
+
+    obstacles.forEach(obstacle => {
+      ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = obstacle.type === "rock" ? "gray" : "white";
+      ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
+    });
+
+    powerUps.forEach(powerUp => {
+      ctx.font = "30px serif";
+      ctx.fillStyle = "yellow";
+      ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
+    });
+
+    ctx.fillStyle = "#00f0ff";
+    ctx.font = "20px monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(`Score: ${score}`, 10, 10);
+    if (hasShield) ctx.fillText("🛡️ Shield Active!", 10, 40);
+    ctx.fillText(`Player: ${nickname || "Anonymous"}`, 10, 70);
+  }
+
+  function update(deltaTime, timestamp) {
+    if (gameOver) return;
+    const dt = deltaTime / 16.67;
+
+    dino.y += dino.vy * dt;
+    dino.vy += gravity * dt;
+
+    if (dino.y > canvas.height - 20) {
+      dino.y = canvas.height - 20;
+      dino.vy = 0;
+      dino.jumping = false;
     }
 
-    function loop(timestamp) {
-      if (!canvas || !ctx) {
-        console.error("Loop aborted: Canvas or context not available");
-        return;
-      }
-      try {
-        console.log("Game loop running, timestamp:", timestamp);
-        const deltaTime = timestamp - lastFrameTime;
-        lastFrameTime = timestamp;
+    dino.frame += dt;
+    if (dino.frame > 20) dino.frame = 0;
 
-        update(deltaTime, timestamp);
-        draw();
-        if (!gameOver) {
-          animationFrameId = requestAnimationFrame(loop);
-        }
-      } catch (error) {
-        console.error("Error in game loop:", error.message, error.stack);
-      }
-    }
+    backgroundObjects.forEach(obj => {
+      obj.x -= 0.5 * dt;
+      if (obj.x < -obj.size) obj.x = canvas.width + obj.size;
+    });
 
-    async function saveScore(newScore, name) {
-      if (!database) {
-        console.error("Database not initialized, cannot save score.");
-        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save: Database not initialized)`;
-        return;
-      }
-      if (!name || name === "Anonymous") {
-        console.warn("Anonymous score not saved to avoid cluttering leaderboard");
-        document.getElementById("final-score").textContent = `Final Score: ${score} (Not saved: Nickname required)`;
-        return;
-      }
-      console.log("Attempting to save score to Firebase:", { name, score: newScore });
-      try {
-        // Sanitize nickname for Firebase key
-        const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
-        console.log(`Sanitizing nickname: ${name} -> ${sanitizedName}`);
-        const scoreRef = ref(database, `scores-by-name/${sanitizedName}`);
-        console.log("Checking existing score for:", sanitizedName);
-        const snapshot = await get(scoreRef);
-        if (snapshot.exists() && snapshot.val().score >= newScore) {
-          console.log("Score not saved: Existing score is higher or equal", { existingScore: snapshot.val().score, newScore });
-          document.getElementById("final-score").textContent = `Final Score: ${score} (You can do better)`;
-        } else {
-          console.log("Writing to Firebase:", `scores-by-name/${sanitizedName}`);
-          await set(scoreRef, {
-            name,
-            score: newScore,
-            timestamp: Date.now()
-          });
-          console.log("Score saved successfully:", { name, score: newScore });
-          document.getElementById("final-score").textContent = `Final Score: ${score} (Let's Go)`;
-        }
-      } catch (error) {
-        console.error("Error saving score:", error.message, error.stack);
-        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save: ${error.message})`;
-      }
-    }
-
-    function showLeaderboard() {
-      const list = document.getElementById("scores");
-      if (!list) {
-        console.error("Leaderboard element not found");
-        return;
-      }
-      if (!database) {
-        console.error("Database not initialized, cannot show leaderboard.");
-        list.innerHTML = "<li>Leaderboard unavailable. Playing offline.</li>";
-        return;
-      }
-      try {
-        console.log("Fetching leaderboard...");
-        const scoreRef = query(ref(database, "scores-by-name"), orderByChild("score"), limitToLast(10));
-        onValue(scoreRef, (snapshot) => {
-          console.log("Leaderboard data received");
-          list.innerHTML = "";
-          const scores = [];
-          snapshot.forEach((child) => {
-            const data = child.val();
-            scores.push({ name: data.name, score: data.score, timestamp: data.timestamp });
-          });
-          if (scores.length === 0) {
-            list.innerHTML = "<li>No scores yet.</li>";
-            return;
-          }
-          scores
-            .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
-            .slice(0, 10)
-            .forEach((entry, i) => {
-              const li = document.createElement("li");
-              li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
-              list.appendChild(li);
-            });
-        }, (error) => {
-          console.error("Error updating leaderboard:", error.message, error.stack);
-          list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
-        });
-      } catch (error) {
-        console.error("Error in showLeaderboard:", error.message, error.stack);
-        list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
-      }
-    }
-
-    function startGame() {
-      try {
-        console.log("startGame called");
-        const input = document.getElementById("nickname");
-        if (!input) {
-          console.error("Nickname input not found");
-          nickname = "";
-          console.log("No input found, nickname empty");
-        } else {
-          const inputValue = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
-          nickname = inputValue;
-          console.log("Nickname input value:", inputValue, "Set nickname to:", nickname);
-          if (!nickname) {
-            console.warn("Nickname is empty, preventing game start");
-            document.getElementById("nickname").placeholder = "Nickname required!";
-            return;
-          }
-          localStorage.setItem("dinoNickname", nickname);
-        }
-
-        const form = document.getElementById("nickname-form");
-        if (form) {
-          form.style.display = "none";
-          console.log("Nickname form hidden");
-        } else {
-          console.error("Nickname form not found");
-        }
-
-        // Initialize game state
-        if (!initializeGame()) {
-          console.error("Failed to initialize game");
-          return;
-        }
-
-        // Start game loop with delay to ensure DOM is ready
-        console.log("Scheduling game loop...");
-        setTimeout(() => {
-          if (canvas && ctx) {
-            console.log("Starting game loop");
-            animationFrameId = requestAnimationFrame(loop);
-          } else {
-            console.error("Cannot start game: Canvas or context not available");
-          }
-        }, 100);
-
-        // Load leaderboard asynchronously
-        console.log("Scheduling leaderboard...");
-        setTimeout(() => {
-          showLeaderboard();
-        }, 0);
-      } catch (error) {
-        console.error("Error in startGame:", error.message, error.stack);
-      }
-    }
-
-    function restartGame() {
-      try {
-        console.log("restartGame called");
-        score = 0;
-        gameSpeed = 6;
-        gameOver = false;
-        obstacles = [];
-        powerUps = [];
-        hasShield = false;
-        dino.y = canvas.height - 20;
-        dino.vy = 0;
-        dino.jumping = false;
-        dino.jumpCooldown = 0;
-        lastObstacleSpawn = 0;
-        const gameOverDiv = document.getElementById("game-over");
-        if (gameOverDiv) {
-          gameOverDiv.classList.remove("show");
-        } else {
-          console.error("Game over div not found");
-        }
-        const touchBtn = document.getElementById("touch-btn");
-        if (touchBtn) {
-          touchBtn.style.display = "block";
-        } else {
-          console.error("Touch button not found");
-        }
-        if (canvas && ctx) {
-          console.log("Starting game loop in restart");
-          animationFrameId = requestAnimationFrame(loop);
-        } else {
-          console.error("Cannot restart game: Canvas or context not available");
-        }
-      } catch (error) {
-        console.error("Error in restartGame:", error.message, error.stack);
-      }
-    }
-
-    // Initialize Firebase and add event listeners
-    window.addEventListener("load", async () => {
-      try {
-        console.log("Window loaded");
-        // Initialize Firebase
-        await initializeFirebase();
-
-        // Add event listener for start game button
-        const startButton = document.getElementById("start-game-btn");
-        if (startButton) {
-          startButton.addEventListener("click", () => {
-            console.log("Start game button clicked");
-            startGame();
-          });
-          console.log("Start game button listener added");
-        } else {
-          console.error("Start game button not found");
-        }
-
-        // Add event listener for restart game button
-        const restartButton = document.getElementById("restart-game-btn");
-        if (restartButton) {
-          restartButton.addEventListener("click", () => {
-            console.log("Restart game button clicked");
-            restartGame();
-          });
-          console.log("Restart game button listener added");
-        } else {
-          console.error("Restart game button not found");
-        }
-
-        // Add event listener for jump
-        window.addEventListener("keydown", (e) => {
-          if (e.code === "Space") {
-            e.preventDefault();
-            jump();
-          }
-        });
-
-        const touchBtn = document.getElementById("touch-btn");
-        if (touchBtn) {
-          touchBtn.addEventListener("touchstart", (e) => {
-            e.preventDefault();
-            jump();
-          });
-          console.log("Touch button listener added");
-        } else {
-          console.error("Touch button not found");
-        }
-
-        // Always show nickname form on load and prefill with saved nickname
-        const form = document.getElementById("nickname-form");
-        if (form) {
-          form.style.display = "flex";
-          const input = document.getElementById("nickname");
-          const savedName = localStorage.getItem("dinoNickname");
-          if (savedName && input) {
-            input.value = savedName;
-            console.log("Loaded saved nickname into input:", savedName);
-          } else {
-            console.log("No saved nickname or input not found");
-          }
-          console.log("Nickname form displayed");
-        } else {
-          console.error("Nickname form not found");
-        }
-      } catch (error) {
-        console.error("Error in window.onload:", error.message, error.stack);
+    obstacles.forEach((obstacle, index) => {
+      obstacle.x -= gameSpeed * dt;
+      if (obstacle.x < -obstacle.width) {
+        obstacles.splice(index, 1);
+        score++;
       }
     });
-  </script>
+
+    powerUps.forEach((powerUp, index) => {
+      powerUp.x -= gameSpeed * dt;
+      if (powerUp.x < -powerUp.width) powerUps.splice(index, 1);
+    });
+
+    spawnObstacle(timestamp);
+    spawnPowerUp();
+    gameSpeed = 6 + score / 300;
+
+    if (dino.jumpCooldown > 0) dino.jumpCooldown -= dt;
+
+    for (let obstacle of obstacles) {
+      const dinoHitbox = { x: dino.x + 5, y: dino.y + 5, width: dino.width - 10, height: dino.height - 10 };
+      const obstacleHitbox = { x: obstacle.x + 5, y: obstacle.y + 5, width: obstacle.width - 10, height: obstacle.height - 10 };
+      if (
+        dinoHitbox.x < obstacleHitbox.x + obstacleHitbox.width &&
+        dinoHitbox.x + dinoHitbox.width > obstacleHitbox.x &&
+        dinoHitbox.y < obstacleHitbox.y + obstacleHitbox.height &&
+        dinoHitbox.y + dinoHitbox.height > obstacleHitbox.y
+      ) {
+        if (hasShield) {
+          hasShield = false;
+          obstacles.splice(obstacles.indexOf(obstacle), 1);
+        } else {
+          gameOver = true;
+          saveScore(score, nickname);
+          document.getElementById("final-score").textContent = `Final Score: ${score}`;
+          document.getElementById("game-over").classList.add("show");
+          document.getElementById("touch-btn").style.display = "none";
+        }
+      }
+    }
+
+    for (let powerUp of powerUps) {
+      if (
+        dino.x < powerUp.x + powerUp.width &&
+        dino.x + dino.width > powerUp.x &&
+        dino.y < powerUp.y + powerUp.height &&
+        dino.y + dino.height > powerUp.y
+      ) {
+        if (powerUp.type === "shield") {
+          hasShield = true;
+          powerUps.splice(powerUps.indexOf(powerUp), 1);
+        }
+      }
+    }
+  }
+
+  function jump() {
+    if (!dino.jumping && dino.jumpCooldown <= 0) {
+      dino.vy = -12;
+      dino.jumping = true;
+      dino.jumpCooldown = 15;
+    }
+  }
+
+  function loop(timestamp) {
+    if (!canvas || !ctx) return;
+    const deltaTime = Math.min(timestamp - lastFrameTime, 33.33);
+    lastFrameTime = timestamp;
+    update(deltaTime, timestamp);
+    draw();
+    if (!gameOver) animationFrameId = requestAnimationFrame(loop);
+  }
+
+  async function saveScore(newScore, name) {
+    if (!database) {
+      document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save: Database not initialized)`;
+      return;
+    }
+    if (!name || name === "Anonymous") {
+      document.getElementById("final-score").textContent = `Final Score: ${score} (Not saved: Nickname required)`;
+      return;
+    }
+    try {
+      const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
+      const scoreRef = ref(database, `scores-by-name/${sanitizedName}`);
+      const snapshot = await get(scoreRef);
+      if (snapshot.exists() && snapshot.val().score >= newScore) {
+        document.getElementById("final-score").textContent = `Final Score: ${score} (You can do better)`;
+      } else {
+        await set(scoreRef, { name, score: newScore, timestamp: Date.now() });
+        document.getElementById("final-score").textContent = `Final Score: ${score} (Let's Go)`;
+      }
+    } catch (error) {
+      document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save: ${error.message})`;
+    }
+  }
+
+  function showLeaderboard() {
+    const list = document.getElementById("scores");
+    if (!list || !database) {
+      if (list) list.innerHTML = "<li>Leaderboard unavailable. Playing offline.</li>";
+      return;
+    }
+    try {
+      const scoreRef = query(ref(database, "scores-by-name"), orderByChild("score"), limitToLast(10));
+      onValue(scoreRef, (snapshot) => {
+        list.innerHTML = "";
+        const scores = [];
+        snapshot.forEach(child => {
+          const data = child.val();
+          scores.push({ name: data.name, score: data.score, timestamp: data.timestamp });
+        });
+        if (scores.length === 0) {
+          list.innerHTML = "<li>No scores yet.</li>";
+          return;
+        }
+        scores
+          .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
+          .slice(0, 10)
+          .forEach((entry, i) => {
+            const li = document.createElement("li");
+            li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
+            list.appendChild(li);
+          });
+      }, error => {
+        list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
+      });
+    } catch (error) {
+      list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
+    }
+  }
+
+  function startGame() {
+    const input = document.getElementById("nickname");
+    if (!input) {
+      nickname = "Anonymous";
+    } else {
+      const inputValue = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
+      if (!inputValue) {
+        input.placeholder = "Please enter a nickname!";
+        input.style.border = "2px solid red";
+        return;
+      }
+      nickname = inputValue;
+      localStorage.setItem("dinoNickname", nickname);
+    }
+
+    document.getElementById("nickname-form").style.display = "none";
+    if (!initializeGame()) return;
+
+    setTimeout(() => {
+      if (canvas && ctx) animationFrameId = requestAnimationFrame(loop);
+    }, 100);
+    setTimeout(showLeaderboard, 0);
+  }
+
+  function restartGame() {
+    score = 0;
+    gameSpeed = 6;
+    gameOver = false;
+    obstacles = [];
+    powerUps = [];
+    hasShield = false;
+    dino.y = canvas.height - 20;
+    dino.vy = 0;
+    dino.jumping = false;
+    dino.jumpCooldown = 0;
+    lastObstacleSpawn = 0;
+    document.getElementById("game-over").classList.remove("show");
+    document.getElementById("touch-btn").style.display = "block";
+    if (canvas && ctx) animationFrameId = requestAnimationFrame(loop);
+  }
+
+  window.addEventListener("load", async () => {
+    await initializeFirebase();
+
+    const startButton = document.getElementById("start-game-btn");
+    if (startButton) startButton.addEventListener("click", startGame);
+
+    const restartButton = document.getElementById("restart-game-btn");
+    if (restartButton) restartButton.addEventListener("click", restartGame);
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        jump();
+      }
+    });
+
+    const touchBtn = document.getElementById("touch-btn");
+    if (touchBtn) {
+      touchBtn.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (!gameOver && dino.jumpCooldown <= 0) jump();
+      }, { passive: false });
+    }
+
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      if (!gameOver && dino.jumpCooldown <= 0) jump();
+    }, { passive: false });
+
+    const form = document.getElementById("nickname-form");
+    if (form) {
+      form.style.display = "flex";
+      const input = document.getElementById("nickname");
+      const savedName = localStorage.getItem("dinoNickname");
+      if (savedName && input) input.value = savedName;
+    }
+  });
+</script>
 </body>
 </html>
