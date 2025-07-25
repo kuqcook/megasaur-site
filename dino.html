@@ -163,7 +163,7 @@
   <script type="module">
     // Import Firebase modular SDK
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast, get, set, child } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+    import { getDatabase, ref, onValue, query, orderByChild, limitToLast, get, set } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
 
     // Initialize Firebase
     let database;
@@ -180,6 +180,12 @@
       const app = initializeApp(firebaseConfig);
       database = getDatabase(app);
       console.log("Firebase initialized successfully");
+      // Verify database connection
+      get(ref(database, '/')).then(() => {
+        console.log("Database connection verified");
+      }).catch((error) => {
+        console.error("Database connection failed:", error.message, error.stack);
+      });
     } catch (error) {
       console.error("Firebase initialization error:", error.message, error.stack);
       document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
@@ -245,6 +251,7 @@
     const obstacleTypes = [
       { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
       { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
+      { type: "rock", emoji: "🪨", width: 50, height: 45, y: 230 }
     ];
 
     const powerUpTypes = [
@@ -268,7 +275,16 @@
     }
 
     function spawnPowerUp() {
-      if (powerUps.length < 1 && Math.random() < 0.005) {
+      if (powerUps.length < 1 && Math.random() < 0.0005) {
+        // Check for nearby gates
+        const hasNearbyGate = obstacles.some(obstacle => 
+          obstacle.type === "gate" && 
+          Math.abs(obstacle.x - (canvas.width + 100)) < 100
+        );
+        if (hasNearbyGate) {
+          console.log("Power-up spawn blocked by nearby gate");
+          return;
+        }
         const type = powerUpTypes[0];
         powerUps.push({
           x: canvas.width + 100 + Math.random() * 300,
@@ -327,7 +343,7 @@
           ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
           ctx.textAlign = "left";
           ctx.textBaseline = "bottom";
-          ctx.fillStyle = "white";
+          ctx.fillStyle = obstacle.type === "rock" ? "gray" : "white";
           ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
         });
 
@@ -496,7 +512,7 @@
     async function saveScore(newScore, name) {
       if (!database) {
         console.error("Database not initialized, cannot save score.");
-        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
+        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save: Database not initialized)`;
         return;
       }
       if (!name || name === "Anonymous") {
@@ -506,40 +522,27 @@
       }
       console.log("Attempting to save score to Firebase:", { name, score: newScore });
       try {
-        const scoreRef = ref(database, "scores");
-        // Check if nickname already exists
-        const snapshot = await get(query(scoreRef, orderByChild("name"), limitToLast(100)));
-        let existingKey = null;
-        let existingScore = -1;
-        snapshot.forEach((child) => {
-          const data = child.val();
-          if (data.name === name) {
-            existingKey = child.key;
-            existingScore = data.score;
-          }
-        });
-        if (existingKey && newScore > existingScore) {
-          // Update existing score if new score is higher
-          await set(ref(database, `scores/${existingKey}`), {
-            name,
-            score: newScore,
-            timestamp: Date.now()
-          });
-          console.log("Updated existing score:", { name, score: newScore });
-        } else if (!existingKey) {
-          // Add new score if nickname doesn't exist
-          await push(scoreRef, {
-            name,
-            score: newScore,
-            timestamp: Date.now()
-          });
-          console.log("Added new score:", { name, score: newScore });
+        // Sanitize nickname for Firebase key
+        const sanitizedName = name.replace(/[^a-zA-Z0-9]/g, "_");
+        const scoreRef = ref(database, `scores-by-name/${sanitizedName}`);
+        console.log("Checking existing score for:", sanitizedName);
+        const snapshot = await get(scoreRef);
+        if (snapshot.exists() && snapshot.val().score >= newScore) {
+          console.log("Score not saved: Existing score is higher or equal", { existingScore: snapshot.val().score, newScore });
+          document.getElementById("final-score").textContent = `Final Score: ${score} (Not saved: Higher score exists)`;
         } else {
-          console.log("Score not saved: Existing score is higher or equal", { existingScore, newScore });
+          console.log("Saving score:", { name, score: newScore });
+          await set(scoreRef, {
+            name,
+            score: newScore,
+            timestamp: Date.now()
+          });
+          console.log("Score saved successfully:", { name, score: newScore });
+          document.getElementById("final-score").textContent = `Final Score: ${score} (Saved)`;
         }
       } catch (error) {
         console.error("Error saving score:", error.message, error.stack);
-        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
+        document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save: ${error.message})`;
       }
     }
 
@@ -556,30 +559,27 @@
       }
       try {
         console.log("Fetching leaderboard...");
-        const scoreRef = query(ref(database, "scores"), orderByChild("score"), limitToLast(100));
+        const scoreRef = query(ref(database, "scores-by-name"), orderByChild("score"), limitToLast(10));
         onValue(scoreRef, (snapshot) => {
           console.log("Leaderboard data received");
           list.innerHTML = "";
-          const scoresByName = {};
+          const scores = [];
           snapshot.forEach((child) => {
             const data = child.val();
-            if (!scoresByName[data.name] || data.score > scoresByName[data.name].score) {
-              scoresByName[data.name] = { score: data.score, timestamp: data.timestamp };
-            }
+            scores.push({ name: data.name, score: data.score, timestamp: data.timestamp });
           });
-          const scores = Object.entries(scoresByName)
-            .map(([name, data]) => ({ name, score: data.score, timestamp: data.timestamp }))
-            .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
-            .slice(0, 10);
           if (scores.length === 0) {
             list.innerHTML = "<li>No scores yet.</li>";
             return;
           }
-          scores.forEach((entry, i) => {
-            const li = document.createElement("li");
-            li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
-            list.appendChild(li);
-          });
+          scores
+            .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
+            .slice(0, 10)
+            .forEach((entry, i) => {
+              const li = document.createElement("li");
+              li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
+              list.appendChild(li);
+            });
         }, (error) => {
           console.error("Error updating leaderboard:", error.message, error.stack);
           list.innerHTML = `<li>Failed to load leaderboard: ${error.message}</li>`;
