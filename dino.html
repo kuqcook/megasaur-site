@@ -181,12 +181,17 @@
       let retries = 3;
       while (retries > 0) {
         try {
+          console.log("Attempting Firebase initialization...");
           const app = initializeApp(firebaseConfig);
           database = getDatabase(app);
           console.log("Firebase initialized successfully");
-          // Verify database connection
+          // Verify database connection with read
           await get(ref(database, '/'));
-          console.log("Database connection verified");
+          console.log("Database read access verified");
+          // Verify write access
+          console.log("Testing Firebase write access");
+          await set(ref(database, 'test-connection'), { test: true, timestamp: Date.now() });
+          console.log("Database write access verified");
           document.getElementById("scores").innerHTML = "";
           return true;
         } catch (error) {
@@ -529,13 +534,14 @@
       }
       if (!name || name === "Anonymous") {
         console.warn("Anonymous score not saved to avoid cluttering leaderboard");
-        document.getElementById("final-score").textContent = `Final Score: ${score} (Not saved for Anonymous)`;
+        document.getElementById("final-score").textContent = `Final Score: ${score} (Not saved: Nickname required)`;
         return;
       }
       console.log("Attempting to save score to Firebase:", { name, score: newScore });
       try {
         // Sanitize nickname for Firebase key
-        const sanitizedName = name.replace(/[^a-zA-Z0-9]/g, "_");
+        const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 50);
+        console.log(`Sanitizing nickname: ${name} -> ${sanitizedName}`);
         const scoreRef = ref(database, `scores-by-name/${sanitizedName}`);
         console.log("Checking existing score for:", sanitizedName);
         const snapshot = await get(scoreRef);
@@ -543,7 +549,7 @@
           console.log("Score not saved: Existing score is higher or equal", { existingScore: snapshot.val().score, newScore });
           document.getElementById("final-score").textContent = `Final Score: ${score} (Not saved: Higher score exists)`;
         } else {
-          console.log("Saving score:", { name, score: newScore });
+          console.log("Writing to Firebase:", `scores-by-name/${sanitizedName}`);
           await set(scoreRef, {
             name,
             score: newScore,
@@ -608,12 +614,17 @@
         const input = document.getElementById("nickname");
         if (!input) {
           console.error("Nickname input not found");
-          nickname = "Anonymous";
-          console.log("No input found, using nickname:", nickname);
+          nickname = "";
+          console.log("No input found, nickname empty");
         } else {
           const inputValue = input.value.trim().slice(0, 20).replace(/[<>&]/g, "");
-          nickname = inputValue || "Anonymous";
+          nickname = inputValue;
           console.log("Nickname input value:", inputValue, "Set nickname to:", nickname);
+          if (!nickname) {
+            console.warn("Nickname is empty, preventing game start");
+            document.getElementById("nickname").placeholder = "Nickname required!";
+            return;
+          }
           localStorage.setItem("dinoNickname", nickname);
         }
 
@@ -753,21 +764,7 @@
           }
           console.log("Nickname form displayed");
         } else {
-          console.error("Nickname form not found, starting with Anonymous");
-          nickname = "Anonymous";
-          if (initializeGame()) {
-            setTimeout(() => {
-              showLeaderboard();
-              if (canvas && ctx) {
-                console.log("Starting game loop on load with Anonymous");
-                animationFrameId = requestAnimationFrame(loop);
-              } else {
-                console.error("Cannot start game on load: Canvas or context not available");
-              }
-            }, 100);
-          } else {
-            console.error("Failed to initialize game on load");
-          }
+          console.error("Nickname form not found");
         }
       } catch (error) {
         console.error("Error in window.onload:", error.message, error.stack);
