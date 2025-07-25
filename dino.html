@@ -163,7 +163,7 @@
   <script type="module">
     // Import Firebase modular SDK
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+    import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast, get, set, child } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
 
     // Initialize Firebase
     let database;
@@ -493,24 +493,54 @@
       }
     }
 
-    function saveScore(newScore, name) {
+    async function saveScore(newScore, name) {
       if (!database) {
         console.error("Database not initialized, cannot save score.");
         document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
         return;
       }
-      console.log("Saving score to Firebase:", { name, score: newScore });
-      const scoreRef = ref(database, "scores");
-      push(scoreRef, {
-        name: name || "Anonymous",
-        score: newScore,
-        timestamp: Date.now()
-      }).then(() => {
-        console.log("Score saved successfully:", { name, score: newScore });
-      }).catch((error) => {
+      if (!name || name === "Anonymous") {
+        console.warn("Anonymous score not saved to avoid cluttering leaderboard");
+        document.getElementById("final-score").textContent = `Final Score: ${score} (Not saved for Anonymous)`;
+        return;
+      }
+      console.log("Attempting to save score to Firebase:", { name, score: newScore });
+      try {
+        const scoreRef = ref(database, "scores");
+        // Check if nickname already exists
+        const snapshot = await get(query(scoreRef, orderByChild("name"), limitToLast(100)));
+        let existingKey = null;
+        let existingScore = -1;
+        snapshot.forEach((child) => {
+          const data = child.val();
+          if (data.name === name) {
+            existingKey = child.key;
+            existingScore = data.score;
+          }
+        });
+        if (existingKey && newScore > existingScore) {
+          // Update existing score if new score is higher
+          await set(ref(database, `scores/${existingKey}`), {
+            name,
+            score: newScore,
+            timestamp: Date.now()
+          });
+          console.log("Updated existing score:", { name, score: newScore });
+        } else if (!existingKey) {
+          // Add new score if nickname doesn't exist
+          await push(scoreRef, {
+            name,
+            score: newScore,
+            timestamp: Date.now()
+          });
+          console.log("Added new score:", { name, score: newScore });
+        } else {
+          console.log("Score not saved: Existing score is higher or equal", { existingScore, newScore });
+        }
+      } catch (error) {
         console.error("Error saving score:", error.message, error.stack);
         document.getElementById("final-score").textContent = `Final Score: ${score} (Failed to save)`;
-      });
+      }
     }
 
     function showLeaderboard() {
@@ -526,19 +556,26 @@
       }
       try {
         console.log("Fetching leaderboard...");
-        const scoreRef = query(ref(database, "scores"), orderByChild("score"), limitToLast(10));
+        const scoreRef = query(ref(database, "scores"), orderByChild("score"), limitToLast(100));
         onValue(scoreRef, (snapshot) => {
           console.log("Leaderboard data received");
           list.innerHTML = "";
-          const scores = [];
+          const scoresByName = {};
           snapshot.forEach((child) => {
-            scores.push(child.val());
+            const data = child.val();
+            if (!scoresByName[data.name] || data.score > scoresByName[data.name].score) {
+              scoresByName[data.name] = { score: data.score, timestamp: data.timestamp };
+            }
           });
+          const scores = Object.entries(scoresByName)
+            .map(([name, data]) => ({ name, score: data.score, timestamp: data.timestamp }))
+            .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp)
+            .slice(0, 10);
           if (scores.length === 0) {
             list.innerHTML = "<li>No scores yet.</li>";
             return;
           }
-          scores.reverse().forEach((entry, i) => {
+          scores.forEach((entry, i) => {
             const li = document.createElement("li");
             li.textContent = `#${i + 1}: ${entry.name} – ${entry.score}`;
             list.appendChild(li);
