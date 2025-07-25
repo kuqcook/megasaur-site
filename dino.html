@@ -226,44 +226,50 @@
         canvas.style.width = `${maxWidth}px`;
         canvas.style.height = `${maxWidth / 2}px`;
         ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
+        const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
         // Update game object positions after resize
         if (dino) {
-          dino.x = canvas.width / window.devicePixelRatio * 0.05;
-          dino.y = canvas.height / window.devicePixelRatio - 20;
-          dino.width = canvas.width / window.devicePixelRatio * 0.03;
-          dino.height = canvas.width / window.devicePixelRatio * 0.03;
+          dino.x = logicalCanvasWidth * 0.05;
+          dino.y = logicalCanvasHeight - 20;
+          dino.width = logicalCanvasWidth * 0.03;
+          dino.height = logicalCanvasWidth * 0.03;
         }
         if (backgroundObjects) {
           backgroundObjects.forEach(obj => {
-            obj.x = canvas.width / window.devicePixelRatio * (obj.x / 800);
-            obj.y = canvas.height / window.devicePixelRatio * (obj.y / (800 / 2));
-            obj.size = canvas.width / window.devicePixelRatio * (obj.size / 800);
+            obj.x = logicalCanvasWidth * (obj.x / 800);
+            obj.y = logicalCanvasHeight * (obj.y / (800 / 2));
+            obj.size = logicalCanvasWidth * (obj.size / 800);
           });
         }
         if (obstacles) {
           obstacles.forEach(obstacle => {
-            obstacle.y = canvas.height / window.devicePixelRatio * obstacleTypes.find(type => type.type === obstacle.type).y;
-            obstacle.width = canvas.width / window.devicePixelRatio * obstacleTypes.find(type => type.type === obstacle.type).width;
-            obstacle.height = canvas.height / window.devicePixelRatio * obstacleTypes.find(type => type.type === obstacle.type).height;
+            const type = obstacleTypes.find(t => t.type === obstacle.type);
+            obstacle.y = logicalCanvasHeight * type.y;
+            obstacle.width = logicalCanvasWidth * type.width;
+            obstacle.height = logicalCanvasHeight * type.height;
           });
         }
         if (powerUps) {
           powerUps.forEach(powerUp => {
-            powerUp.y = canvas.height / window.devicePixelRatio * powerUpTypes.find(type => type.type === powerUp.type).y;
-            powerUp.width = canvas.width / window.devicePixelRatio * powerUpTypes.find(type => type.type === powerUp.type).width;
-            powerUp.height = canvas.height / window.devicePixelRatio * powerUpTypes.find(type => type.type === powerUp.type).height;
+            const type = powerUpTypes.find(t => t.type === powerUp.type);
+            powerUp.y = logicalCanvasHeight * type.y;
+            powerUp.width = logicalCanvasWidth * type.width;
+            powerUp.height = logicalCanvasHeight * type.height;
           });
         }
       }
       window.addEventListener("resize", resizeCanvas);
       resizeCanvas();
 
+      const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
+      const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
       dino = {
-        x: canvas.width / window.devicePixelRatio * 0.05,
-        y: canvas.height / window.devicePixelRatio - 20,
+        x: logicalCanvasWidth * 0.05,
+        y: logicalCanvasHeight - 20,
         vy: 0,
-        width: canvas.width / window.devicePixelRatio * 0.03,
-        height: canvas.width / window.devicePixelRatio * 0.03,
+        width: logicalCanvasWidth * 0.03,
+        height: logicalCanvasWidth * 0.03,
         jumping: false,
         jumpCooldown: 0,
         frame: 0,
@@ -279,8 +285,8 @@
       lastFrameTime = performance.now();
       lastObstacleSpawn = 0;
       backgroundObjects = [
-        { x: canvas.width / window.devicePixelRatio, y: canvas.height / window.devicePixelRatio * 0.2, emoji: "🌙", size: canvas.width / window.devicePixelRatio * 0.025 },
-        { x: canvas.width / window.devicePixelRatio + 300, y: canvas.height / window.devicePixelRatio * 0.3, emoji: "⭐", size: canvas.width / window.devicePixelRatio * 0.01875 },
+        { x: logicalCanvasWidth, y: logicalCanvasHeight * 0.2, emoji: "🌙", size: logicalCanvasWidth * 0.025 },
+        { x: logicalCanvasWidth + 300, y: logicalCanvasHeight * 0.3, emoji: "⭐", size: logicalCanvasWidth * 0.01875 },
       ];
 
       return true;
@@ -297,28 +303,33 @@
     ];
 
     function spawnObstacle(timestamp) {
-      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1500) { // Increased spawn interval
+      const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
+      const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
+      if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) { // Reduced to 1000ms for testing
         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-        const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
-        const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
         const newObstacle = {
-          x: logicalCanvasWidth + 100 + Math.random() * 300,
+          x: logicalCanvasWidth + 50, // Start closer to edge for visibility
           y: logicalCanvasHeight * type.y,
           width: logicalCanvasWidth * type.width,
           height: logicalCanvasHeight * type.height,
           type: type.type,
           emoji: type.emoji,
         };
+        // Ensure obstacle is within canvas bounds
+        if (newObstacle.y > logicalCanvasHeight || newObstacle.y < 0) {
+          console.warn("Obstacle y out of bounds:", newObstacle);
+          newObstacle.y = logicalCanvasHeight * 0.92; // Fallback to ground
+        }
         obstacles.push(newObstacle);
         lastObstacleSpawn = timestamp;
-        console.log("Spawned obstacle:", newObstacle); // Debug log
+        console.log("Spawned obstacle:", { type: type.type, x: newObstacle.x, y: newObstacle.y, width: newObstacle.width, height: newObstacle.height });
       }
     }
 
     function spawnPowerUp() {
+      const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
+      const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
       if (powerUps.length < 1 && Math.random() < 0.0005) {
-        const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
-        const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
         const hasNearbyObstacle = obstacles.some(obstacle => 
           (obstacle.type === "gate" || obstacle.type === "rock") && 
           Math.abs(obstacle.x - (logicalCanvasWidth + 100)) < 100
@@ -326,15 +337,20 @@
         if (hasNearbyObstacle) return;
         const type = powerUpTypes[0];
         const newPowerUp = {
-          x: logicalCanvasWidth + 100 + Math.random() * 300,
+          x: logicalCanvasWidth + 100 + Math.random() * logicalCanvasWidth,
           y: logicalCanvasHeight * type.y,
           width: logicalCanvasWidth * type.width,
           height: logicalCanvasHeight * type.height,
           type: type.type,
           emoji: type.emoji,
         };
+        // Ensure power-up is within bounds
+        if (newPowerUp.y > logicalCanvasHeight || newPowerUp.y < 0) {
+          console.warn("PowerUp y out of bounds:", newPowerUp);
+          newPowerUp.y = logicalCanvasHeight * 0.92;
+        }
         powerUps.push(newPowerUp);
-        console.log("Spawned power-up:", newPowerUp); // Debug log
+        console.log("Spawned power-up:", { type: type.type, x: newPowerUp.x, y: newPowerUp.y, width: newPowerUp.width, height: newPowerUp.height });
       }
     }
 
@@ -348,11 +364,11 @@
       ctx.textBaseline = "middle";
       ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
       backgroundObjects.forEach(obj => {
-        ctx.font = `${obj.size}px serif`;
+        ctx.font = `${obj.size}px 'Segoe UI Emoji', 'Arial', sans-serif`; // Fallback fonts
         ctx.fillText(obj.emoji, obj.x, obj.y);
       });
 
-      ctx.font = `${logicalCanvasWidth * 0.025}px serif`;
+      ctx.font = `${logicalCanvasWidth * 0.025}px 'Segoe UI Emoji', 'Arial', sans-serif`;
       ctx.textAlign = "left";
       ctx.textBaseline = "bottom";
       ctx.fillStyle = "#8B4513";
@@ -363,25 +379,34 @@
       ctx.save();
       ctx.translate(dino.x + dino.width / 2, dino.y);
       ctx.scale(-1, 1);
-      ctx.font = `${logicalCanvasWidth * 0.04}px serif`;
+      ctx.font = `${logicalCanvasWidth * 0.04}px 'Segoe UI Emoji', 'Arial', sans-serif`;
       ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
       ctx.fillText(dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2], 0, 0);
       ctx.restore();
 
       obstacles.forEach(obstacle => {
         ctx.font = obstacle.type === "pterodactyl" ? 
-          `${logicalCanvasWidth * 0.0375}px serif` : 
-          `${logicalCanvasWidth * 0.05}px serif`;
+          `${logicalCanvasWidth * 0.0375}px 'Segoe UI Emoji', 'Arial', sans-serif` : 
+          `${logicalCanvasWidth * 0.05}px 'Segoe UI Emoji', 'Arial', sans-serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.fillStyle = obstacle.type === "rock" ? "gray" : "white";
         ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y);
+        // Fallback: Draw rectangle if emoji fails
+        if (obstacle.x >= -obstacle.width && obstacle.x <= logicalCanvasWidth) {
+          ctx.strokeStyle = "red"; // Debug outline
+          ctx.strokeRect(obstacle.x, obstacle.y - obstacle.height, obstacle.width, obstacle.height);
+          console.log("Drawing obstacle:", { type: obstacle.type, x: obstacle.x, y: obstacle.y });
+        }
       });
 
       powerUps.forEach(powerUp => {
-        ctx.font = `${logicalCanvasWidth * 0.0375}px serif`;
+        ctx.font = `${logicalCanvasWidth * 0.0375}px 'Segoe UI Emoji', 'Arial', sans-serif`;
         ctx.fillStyle = "yellow";
         ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
+        // Debug outline
+        ctx.strokeStyle = "yellow";
+        ctx.strokeRect(powerUp.x, powerUp.y - powerUp.height, powerUp.width, powerUp.height);
       });
 
       ctx.fillStyle = "#00f0ff";
@@ -396,7 +421,7 @@
     function update(deltaTime, timestamp) {
       if (gameOver) return;
       const targetFrameTime = 16.67; // Target 60 FPS
-      const dt = Math.min(deltaTime / targetFrameTime, 2); // Cap dt to prevent large jumps
+      const dt = Math.min(deltaTime / targetFrameTime, 2);
 
       dino.y += dino.vy * dt;
       dino.vy += gravity * dt;
@@ -421,6 +446,7 @@
         if (obstacle.x < -obstacle.width) {
           obstacles.splice(index, 1);
           score++;
+          console.log("Obstacle removed, score:", score);
         }
       });
 
@@ -438,6 +464,7 @@
       for (let obstacle of obstacles) {
         const dinoHitbox = { x: dino.x + 5, y: dino.y + 5, width: dino.width - 10, height: dino.height - 10 };
         const obstacleHitbox = { x: obstacle.x + 5, y: obstacle.y + 5, width: obstacle.width - 10, height: obstacle.height - 10 };
+        console.log("Collision check:", { dinoHitbox, obstacleHitbox }); // Debug log
         if (
           dinoHitbox.x < obstacleHitbox.x + obstacleHitbox.width &&
           dinoHitbox.x + dinoHitbox.width > obstacleHitbox.x &&
@@ -447,14 +474,14 @@
           if (hasShield) {
             hasShield = false;
             obstacles.splice(obstacles.indexOf(obstacle), 1);
-            console.log("Shield used, obstacle removed:", obstacle); // Debug log
+            console.log("Shield used, obstacle removed:", obstacle);
           } else {
             gameOver = true;
             saveScore(score, nickname);
             document.getElementById("final-score").textContent = `Final Score: ${score}`;
             document.getElementById("game-over").classList.add("show");
             document.getElementById("touch-btn").style.display = "none";
-            console.log("Game over, score:", score); // Debug log
+            console.log("Game over, score:", score);
           }
         }
       }
@@ -469,7 +496,7 @@
           if (powerUp.type === "shield") {
             hasShield = true;
             powerUps.splice(powerUps.indexOf(powerUp), 1);
-            console.log("Shield power-up collected:", powerUp); // Debug log
+            console.log("Shield power-up collected:", powerUp);
           }
         }
       }
@@ -480,7 +507,7 @@
         dino.vy = -12;
         dino.jumping = true;
         dino.jumpCooldown = 15;
-        console.log("Jump triggered, dino.y:", dino.y); // Debug log
+        console.log("Jump triggered, dino.y:", dino.y);
       }
     }
 
