@@ -162,12 +162,12 @@
 
   <script type="module">
     // Import Firebase modular SDK
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js';
-    import { getDatabase, ref, onValue, query, orderByChild, limitToLast, get, set } from 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js';
+    import { getDatabase, ref, onValue, query, orderByChild, limitToLast, get, set } from 'https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js';
 
-    // Initialize Firebase
+    // Initialize Firebase with retry mechanism
     let database;
-    try {
+    async function initializeFirebase() {
       const firebaseConfig = {
         apiKey: "AIzaSyACFWv9js50STTex2TzTjEubBP_3heZXgc",
         authDomain: "megasaur-runner.firebaseapp.com",
@@ -177,18 +177,30 @@
         messagingSenderId: "222910326781",
         appId: "1:222910326781:web:b92195977fda4af2661b94"
       };
-      const app = initializeApp(firebaseConfig);
-      database = getDatabase(app);
-      console.log("Firebase initialized successfully");
-      // Verify database connection
-      get(ref(database, '/')).then(() => {
-        console.log("Database connection verified");
-      }).catch((error) => {
-        console.error("Database connection failed:", error.message, error.stack);
-      });
-    } catch (error) {
-      console.error("Firebase initialization error:", error.message, error.stack);
-      document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
+
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          const app = initializeApp(firebaseConfig);
+          database = getDatabase(app);
+          console.log("Firebase initialized successfully");
+          // Verify database connection
+          await get(ref(database, '/'));
+          console.log("Database connection verified");
+          document.getElementById("scores").innerHTML = "";
+          return true;
+        } catch (error) {
+          console.error(`Firebase initialization attempt failed (retries left: ${retries}):`, error.message, error.stack);
+          retries--;
+          if (retries === 0) {
+            console.error("Firebase initialization failed after retries:", error.message, error.stack);
+            document.getElementById("scores").innerHTML = `<li>Failed to connect to leaderboard: ${error.message}</li>`;
+            return false;
+          }
+          // Wait 1 second before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
     }
 
     let canvas, ctx, dino, gravity, obstacles, powerUps, score, gameSpeed, gameOver, nickname, hasShield, lastFrameTime, lastObstacleSpawn, animationFrameId, backgroundObjects;
@@ -276,13 +288,13 @@
 
     function spawnPowerUp() {
       if (powerUps.length < 1 && Math.random() < 0.0005) {
-        // Check for nearby gates
-        const hasNearbyGate = obstacles.some(obstacle => 
-          obstacle.type === "gate" && 
+        // Check for nearby gates or rocks
+        const hasNearbyObstacle = obstacles.some(obstacle => 
+          (obstacle.type === "gate" || obstacle.type === "rock") && 
           Math.abs(obstacle.x - (canvas.width + 100)) < 100
         );
-        if (hasNearbyGate) {
-          console.log("Power-up spawn blocked by nearby gate");
+        if (hasNearbyObstacle) {
+          console.log("Power-up spawn blocked by nearby gate or rock");
           return;
         }
         const type = powerUpTypes[0];
@@ -677,10 +689,13 @@
       }
     }
 
-    // Add event listeners
-    window.addEventListener("load", () => {
+    // Initialize Firebase and add event listeners
+    window.addEventListener("load", async () => {
       try {
         console.log("Window loaded");
+        // Initialize Firebase
+        await initializeFirebase();
+
         // Add event listener for start game button
         const startButton = document.getElementById("start-game-btn");
         if (startButton) {
