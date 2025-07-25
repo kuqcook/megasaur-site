@@ -548,7 +548,7 @@
         const snapshot = await get(scoreRef);
         if (snapshot.exists() && snapshot.val().score >= newScore) {
           console.log("Score not saved: Existing score is higher or equal", { existingScore: snapshot.val().score, newScore });
-          document.getElementById("final-score").textContent = `Final Score: ${score} (Not saved: Higher score exists)`;
+          document.getElementById("final-score").textContent = `Final Score: ${score} (You can do better)`;
         } else {
           console.log("Writing to Firebase:", `scores-by-name/${sanitizedName}`);
           await set(scoreRef, {
@@ -557,7 +557,7 @@
             timestamp: Date.now()
           });
           console.log("Score saved successfully:", { name, score: newScore });
-          document.getElementById("final-score").textContent = `Final Score: ${score} (Saved)`;
+          document.getElementById("final-score").textContent = `Final Score: ${score} (Let's Go)`;
         }
       } catch (error) {
         console.error("Error saving score:", error.message, error.stack);
