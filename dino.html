@@ -226,16 +226,30 @@
         canvas.style.width = `${maxWidth}px`;
         canvas.style.height = `${maxWidth / 2}px`;
         ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        // Update game object positions after resize
+        if (dino) {
+          dino.x = canvas.width / window.devicePixelRatio * 0.05;
+          dino.y = canvas.height / window.devicePixelRatio - 20;
+          dino.width = canvas.width / window.devicePixelRatio * 0.03;
+          dino.height = canvas.width / window.devicePixelRatio * 0.03;
+        }
+        if (backgroundObjects) {
+          backgroundObjects.forEach(obj => {
+            obj.x = canvas.width / window.devicePixelRatio * (obj.x / 800); // Scale relative to maxWidth
+            obj.y = canvas.height / window.devicePixelRatio * (obj.y / (800 / 2));
+            obj.size = canvas.width / window.devicePixelRatio * (obj.size / 800);
+          });
+        }
       }
       window.addEventListener("resize", resizeCanvas);
       resizeCanvas();
 
       dino = {
-        x: canvas.width * 0.05,
-        y: canvas.height - 20,
+        x: canvas.width / window.devicePixelRatio * 0.05,
+        y: canvas.height / window.devicePixelRatio - 20,
         vy: 0,
-        width: canvas.width * 0.03,
-        height: canvas.width * 0.03,
+        width: canvas.width / window.devicePixelRatio * 0.03,
+        height: canvas.width / window.devicePixelRatio * 0.03,
         jumping: false,
         jumpCooldown: 0,
         frame: 0,
@@ -251,31 +265,31 @@
       lastFrameTime = performance.now();
       lastObstacleSpawn = 0;
       backgroundObjects = [
-        { x: canvas.width, y: canvas.height * 0.2, emoji: "🌙", size: 20 },
-        { x: canvas.width + 300, y: canvas.height * 0.3, emoji: "⭐", size: 15 },
+        { x: canvas.width / window.devicePixelRatio, y: canvas.height / window.devicePixelRatio * 0.2, emoji: "🌙", size: canvas.width / window.devicePixelRatio * 0.025 },
+        { x: canvas.width / window.devicePixelRatio + 300, y: canvas.height / window.devicePixelRatio * 0.3, emoji: "⭐", size: canvas.width / window.devicePixelRatio * 0.01875 },
       ];
 
       return true;
     }
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 40, height: 40, y: 230 },
-      { type: "pterodactyl", emoji: "🦅", width: 60, height: 30, y: 140 },
-      { type: "rock", emoji: "🪨", width: 50, height: 45, y: 230 }
+      { type: "gate", emoji: "⛩️", width: 0.05, height: 0.05, y: 0.92 }, // Relative to canvas width/height
+      { type: "pterodactyl", emoji: "🦅", width: 0.075, height: 0.0375, y: 0.6 },
+      { type: "rock", emoji: "🪨", width: 0.0625, height: 0.05625, y: 0.92 }
     ];
 
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 30, height: 30, y: 230 },
+      { type: "shield", emoji: "🛡️", width: 0.0375, height: 0.0375, y: 0.92 },
     ];
 
     function spawnObstacle(timestamp) {
       if (obstacles.length < 2 && timestamp - lastObstacleSpawn > 1000) {
         const type = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
         obstacles.push({
-          x: canvas.width + 100 + Math.random() * 300,
-          y: canvas.height - 20,
-          width: type.width * (canvas.width / 1400),
-          height: type.height * (canvas.width / 1400),
+          x: canvas.width / window.devicePixelRatio + 100 + Math.random() * 300,
+          y: canvas.height / window.devicePixelRatio * type.y,
+          width: canvas.width / window.devicePixelRatio * type.width,
+          height: canvas.height / window.devicePixelRatio * type.height,
           type: type.type,
           emoji: type.emoji,
         });
@@ -287,15 +301,15 @@
       if (powerUps.length < 1 && Math.random() < 0.0005) {
         const hasNearbyObstacle = obstacles.some(obstacle => 
           (obstacle.type === "gate" || obstacle.type === "rock") && 
-          Math.abs(obstacle.x - (canvas.width + 100)) < 100
+          Math.abs(obstacle.x - (canvas.width / window.devicePixelRatio + 100)) < 100
         );
         if (hasNearbyObstacle) return;
         const type = powerUpTypes[0];
         powerUps.push({
-          x: canvas.width + 100 + Math.random() * 300,
-          y: canvas.height - 20,
-          width: type.width * (canvas.width / 1400),
-          height: type.height * (canvas.width / 1400),
+          x: canvas.width / window.devicePixelRatio + 100 + Math.random() * 300,
+          y: canvas.height / window.devicePixelRatio * type.y,
+          width: canvas.width / window.devicePixelRatio * type.width,
+          height: canvas.height / window.devicePixelRatio * type.height,
           type: type.type,
           emoji: type.emoji,
         });
@@ -314,24 +328,26 @@
         ctx.fillText(obj.emoji, obj.x, obj.y);
       });
 
-      ctx.font = "20px serif";
+      ctx.font = `${canvas.width / window.devicePixelRatio * 0.025}px serif`;
       ctx.textAlign = "left";
       ctx.textBaseline = "bottom";
       ctx.fillStyle = "#8B4513";
-      for (let x = 0; x < canvas.width; x += 15) {
-        ctx.fillText("🟫", x, canvas.height - 5);
+      for (let x = 0; x < canvas.width / window.devicePixelRatio; x += 15) {
+        ctx.fillText("🟫", x, canvas.height / window.devicePixelRatio - 5);
       }
 
       ctx.save();
       ctx.translate(dino.x + dino.width / 2, dino.y);
       ctx.scale(-1, 1);
-      ctx.font = "32px serif";
+      ctx.font = `${canvas.width / window.devicePixelRatio * 0.04}px serif`;
       ctx.fillStyle = hasShield ? `hsl(${Date.now() % 360}, 100%, 50%)` : "white";
       ctx.fillText(dino.jumping ? "🦖" : ["🦖", "🦕"][Math.floor(dino.frame / 10) % 2], 0, 0);
       ctx.restore();
 
       obstacles.forEach(obstacle => {
-        ctx.font = obstacle.type === "pterodactyl" ? "30px serif" : "40px serif";
+        ctx.font = obstacle.type === "pterodactyl" ? 
+          `${canvas.width / window.devicePixelRatio * 0.0375}px serif` : 
+          `${canvas.width / window.devicePixelRatio * 0.05}px serif`;
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.fillStyle = obstacle.type === "rock" ? "gray" : "white";
@@ -339,18 +355,18 @@
       });
 
       powerUps.forEach(powerUp => {
-        ctx.font = "30px serif";
+        ctx.font = `${canvas.width / window.devicePixelRatio * 0.0375}px serif`;
         ctx.fillStyle = "yellow";
         ctx.fillText(powerUp.emoji, powerUp.x, powerUp.y);
       });
 
       ctx.fillStyle = "#00f0ff";
-      ctx.font = "20px monospace";
+      ctx.font = `${canvas.width / window.devicePixelRatio * 0.025}px monospace`;
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
       ctx.fillText(`Score: ${score}`, 10, 10);
-      if (hasShield) ctx.fillText("🛡️ Shield Active!", 10, 40);
-      ctx.fillText(`Player: ${nickname || "Anonymous"}`, 10, 70);
+      if (hasShield) ctx.fillText("🛡️ Shield Active!", 10, canvas.width / window.devicePixelRatio * 0.05);
+      ctx.fillText(`Player: ${nickname || "Anonymous"}`, 10, canvas.width / window.devicePixelRatio * 0.0875);
     }
 
     function update(deltaTime, timestamp) {
@@ -360,8 +376,8 @@
       dino.y += dino.vy * dt;
       dino.vy += gravity * dt;
 
-      if (dino.y > canvas.height - 20) {
-        dino.y = canvas.height - 20;
+      if (dino.y > canvas.height / window.devicePixelRatio - 20) {
+        dino.y = canvas.height / window.devicePixelRatio - 20;
         dino.vy = 0;
         dino.jumping = false;
       }
@@ -371,7 +387,7 @@
 
       backgroundObjects.forEach(obj => {
         obj.x -= 0.5 * dt;
-        if (obj.x < -obj.size) obj.x = canvas.width + obj.size;
+        if (obj.x < -obj.size) obj.x = canvas.width / window.devicePixelRatio + obj.size;
       });
 
       obstacles.forEach((obstacle, index) => {
@@ -537,7 +553,7 @@
       obstacles = [];
       powerUps = [];
       hasShield = false;
-      dino.y = canvas.height - 20;
+      dino.y = canvas.height / window.devicePixelRatio - 20;
       dino.vy = 0;
       dino.jumping = false;
       dino.jumpCooldown = 0;
