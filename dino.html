@@ -179,7 +179,7 @@
     let canvas = document.getElementById("game");
     let ctx = canvas ? canvas.getContext("2d") : null;
     let dino, gravity, obstacles, powerUps, score, gameSpeed, gameOver, nickname, hasShield, lastFrameTime, lastObstacleSpawn, animationFrameId, backgroundObjects;
-    const DEBUG = true; // Enable debug visuals and logs
+    const DEBUG = false; // Enable debug visuals and logs
 
     async function initializeFirebase() {
       const firebaseConfig = {
@@ -231,7 +231,7 @@
         const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
         if (dino) {
           dino.x = logicalCanvasWidth * 0.05;
-          dino.y = logicalCanvasHeight; // Align with ground
+          dino.y = logicalCanvasHeight;
           dino.width = logicalCanvasWidth * 0.05;
           dino.height = logicalCanvasWidth * 0.05;
         }
@@ -295,13 +295,13 @@
     }
 
     const obstacleTypes = [
-      { type: "gate", emoji: "⛩️", width: 0.06, height: 0.06, y: 1.0 }, // Align with ground
-      { type: "pterodactyl", emoji: "🦅", width: 0.08, height: 0.04, y: 0.7 },
-      { type: "rock", emoji: "🪨", width: 0.07, height: 0.07, y: 1.0 }
+      { type: "gate", emoji: "⛩️", width: 0.06, height: 0.08, y: 0.95 },
+      { type: "pterodactyl", emoji: "🦅", width: 0.10, height: 0.04, y: 0.7 },
+      { type: "rock", emoji: "🪨", width: 0.07, height: 0.08, y: 0.95 }
     ];
 
     const powerUpTypes = [
-      { type: "shield", emoji: "🛡️", width: 0.04, height: 0.04, y: 1.0 },
+      { type: "shield", emoji: "🛡️", width: 0.04, height: 0.04, y: 0.95 },
     ];
 
     function spawnObstacle(timestamp) {
@@ -332,14 +332,17 @@
       const logicalCanvasWidth = canvas.width / window.devicePixelRatio;
       const logicalCanvasHeight = canvas.height / window.devicePixelRatio;
       if (powerUps.length < 1 && Math.random() < 0.001) {
+        const spawnX = logicalCanvasWidth + 50;
         const hasNearbyObstacle = obstacles.some(obstacle => 
-          (obstacle.type === "gate" || obstacle.type === "rock") && 
-          Math.abs(obstacle.x - (logicalCanvasWidth + 50)) < 100
+          Math.abs(obstacle.x - spawnX) < 200
         );
-        if (hasNearbyObstacle) return;
+        if (hasNearbyObstacle) {
+          console.log("Shield spawn skipped: too close to obstacle");
+          return;
+        }
         const type = powerUpTypes[0];
         const newPowerUp = {
-          x: logicalCanvasWidth + 50,
+          x: spawnX,
           y: logicalCanvasHeight * type.y,
           width: logicalCanvasWidth * type.width,
           height: logicalCanvasHeight * type.height,
@@ -386,7 +389,12 @@
       ctx.restore();
       if (DEBUG) {
         ctx.strokeStyle = "blue";
-        ctx.strokeRect(dino.x, dino.y - dino.height, dino.width, dino.height);
+        const hitboxWidth = dino.width * 0.8;
+        const hitboxHeight = dino.height * 0.8;
+        const hitboxX = dino.x - dino.width * 0.2;
+        const hitboxY = dino.y - dino.height * 1.0;
+        ctx.strokeRect(hitboxX, hitboxY, hitboxWidth, hitboxHeight);
+        console.log("Drawing dino:", { hitboxX, hitboxY, hitboxWidth, hitboxHeight, renderX: dino.x + dino.width / 2, renderY: dino.y - dino.height / 2 });
       }
 
       obstacles.forEach(obstacle => {
@@ -413,6 +421,7 @@
         if (DEBUG) {
           ctx.strokeStyle = "yellow";
           ctx.strokeRect(powerUp.x, powerUp.y - powerUp.height, powerUp.width, powerUp.height);
+          console.log("Drawing power-up:", { type: powerUp.type, x: powerUp.x, y: powerUp.y, width: powerUp.width, height: powerUp.height });
         }
       });
 
@@ -470,11 +479,15 @@
       if (dino.jumpCooldown > 0) dino.jumpCooldown -= dt;
 
       for (let obstacle of obstacles) {
+        const hitboxWidth = dino.width * 0.8;
+        const hitboxHeight = dino.height * 0.8;
+        const hitboxX = dino.x - dino.width * 0.2;
+        const hitboxY = dino.y - dino.height * 1.0;
         const dinoHitbox = { 
-          x: dino.x, 
-          y: dino.y - dino.height, 
-          width: dino.width, 
-          height: dino.height 
+          x: hitboxX, 
+          y: hitboxY, 
+          width: hitboxWidth, 
+          height: hitboxHeight 
         };
         const obstacleHitbox = { 
           x: obstacle.x, 
@@ -507,11 +520,15 @@
       }
 
       for (let powerUp of powerUps) {
+        const hitboxWidth = dino.width * 0.8;
+        const hitboxHeight = dino.height * 0.8;
+        const hitboxX = dino.x - dino.width * 0.2;
+        const hitboxY = dino.y - dino.height * 1.0;
         const dinoHitbox = { 
-          x: dino.x, 
-          y: dino.y - dino.height, 
-          width: dino.width, 
-          height: dino.height 
+          x: hitboxX, 
+          y: hitboxY, 
+          width: hitboxWidth, 
+          height: hitboxHeight 
         };
         const powerUpHitbox = { 
           x: powerUp.x, 
@@ -519,6 +536,9 @@
           width: powerUp.width, 
           height: powerUp.height 
         };
+        if (DEBUG) {
+          console.log("Power-up collision check:", { dinoHitbox, powerUpHitbox });
+        }
         if (
           dinoHitbox.x < powerUpHitbox.x + powerUpHitbox.width &&
           dinoHitbox.x + dinoHitbox.width > powerUpHitbox.x &&
